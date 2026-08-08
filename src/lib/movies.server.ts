@@ -3,7 +3,7 @@ import { createPublicClient } from "@/lib/supabase-public.server";
 type ShowJoin = {
   name: string;
   total_seats: number;
-  theatres: { name: string; city: string } | null;
+  theatres: { name: string; city: string; address: string } | null;
 } | null;
 
 export function showStartISO(showDate: string, showTime: string): string {
@@ -37,7 +37,9 @@ export async function fetchShowtimes(movieId: string, date: string, city?: strin
 
   const { data: rows, error } = await supabase
     .from("shows")
-    .select("id, show_date, show_time, base_price, screen_id, screens(name, total_seats, theatres(name, city))")
+    .select(
+      "id, show_date, show_time, base_price, gold_price, premium_price, screen_id, screens(name, total_seats, theatres(name, city, address))",
+    )
     .eq("movie_id", movieId)
     .eq("show_date", date)
     .order("show_time", { ascending: true });
@@ -45,8 +47,7 @@ export async function fetchShowtimes(movieId: string, date: string, city?: strin
   const shows = city
     ? (rows ?? []).filter(
         (s) =>
-          (s.screens as unknown as ShowJoin)?.theatres?.city?.toLowerCase() ===
-          city.toLowerCase(),
+          (s.screens as unknown as ShowJoin)?.theatres?.city?.toLowerCase() === city.toLowerCase(),
       )
     : (rows ?? []);
   if (!shows.length) return [];
@@ -76,9 +77,12 @@ export async function fetchShowtimes(movieId: string, date: string, city?: strin
       show_date: show.show_date,
       show_time: show.show_time,
       base_price: show.base_price,
+      gold_price: show.gold_price,
+      premium_price: show.premium_price,
       screen_name: screen?.name ?? "Screen",
       theatre_name: screen?.theatres?.name ?? "Theatre",
       city: screen?.theatres?.city ?? "",
+      theatre_address: screen?.theatres?.address ?? "",
       total_seats: total,
       available_seats: Math.max(0, total - taken),
     };
@@ -90,7 +94,7 @@ export async function fetchSeatMap(showId: string) {
   const { data: show, error: showError } = await supabase
     .from("shows")
     .select(
-      "id, show_date, show_time, base_price, screen_id, movie_id, movies(title, rating, duration_min), screens(name, total_seats, theatres(name, city))",
+      "id, show_date, show_time, base_price, gold_price, premium_price, screen_id, movie_id, movies(title, rating, duration_min, certificate, language), screens(name, total_seats, theatres(name, city, address))",
     )
     .eq("id", showId)
     .single();
@@ -118,11 +122,15 @@ export async function fetchSeatMap(showId: string) {
       show_date: show.show_date,
       show_time: show.show_time,
       base_price: show.base_price,
+      gold_price: show.gold_price,
+      premium_price: show.premium_price,
       movie:
         (show.movies as unknown as {
           title: string;
           rating: string;
           duration_min: number;
+          certificate: string;
+          language: string;
         } | null) ?? null,
       screen: (show.screens as unknown as ShowJoin) ?? null,
     },
@@ -174,7 +182,9 @@ export async function fetchActiveOffers() {
   const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("promo_codes")
-    .select("id, code, description, discount_type, discount_value, max_discount, min_order, valid_until")
+    .select(
+      "id, code, description, discount_type, discount_value, max_discount, min_order, valid_until",
+    )
     .eq("is_active", true)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);

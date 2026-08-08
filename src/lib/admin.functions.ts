@@ -147,9 +147,9 @@ export const saveSeatLayout = createServerFn({ method: "POST" })
       );
     }
     if (data.seats.length) {
-      const { error: insError } = await context.supabase.from("seats").insert(
-        data.seats.map((s) => ({ ...s, screen_id: data.screenId, is_aisle_gap: false })),
-      );
+      const { error: insError } = await context.supabase
+        .from("seats")
+        .insert(data.seats.map((s) => ({ ...s, screen_id: data.screenId, is_aisle_gap: false })));
       if (insError) throw new Error(insError.message);
     }
     await context.supabase
@@ -166,7 +166,9 @@ export const listShowsAdmin = createServerFn({ method: "GET" })
     await requireAdmin(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("shows")
-      .select("id, show_date, show_time, base_price, movie_id, screen_id, movies(title), screens(name, theatres(name))")
+      .select(
+        "id, show_date, show_time, base_price, gold_price, premium_price, movie_id, screen_id, movies(title), screens(name, theatres(name))",
+      )
       .order("show_date", { ascending: false })
       .order("show_time", { ascending: false })
       .limit(200);

@@ -12,7 +12,24 @@ export const TIER_LABELS: Record<SeatTier, string> = {
   premium: "Recliner",
 };
 
-export function seatPrice(basePrice: number, tier: SeatTier): number {
+export type TierPriceOverrides = {
+  gold_price?: number | null;
+  premium_price?: number | null;
+};
+
+/**
+ * Silver always derives from basePrice. Gold/Premium use the admin-set
+ * override for that show when present, otherwise fall back to the default
+ * multiplier off basePrice.
+ */
+export function seatPrice(
+  basePrice: number,
+  tier: SeatTier,
+  overrides?: TierPriceOverrides,
+): number {
+  if (tier === "gold" && overrides?.gold_price != null) return Math.round(overrides.gold_price);
+  if (tier === "premium" && overrides?.premium_price != null)
+    return Math.round(overrides.premium_price);
   return Math.round(basePrice * TIER_MULTIPLIERS[tier]);
 }
 

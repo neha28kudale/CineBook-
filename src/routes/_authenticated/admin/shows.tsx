@@ -4,12 +4,7 @@ import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { listMovies } from "@/lib/movies.functions";
-import {
-  deleteShow,
-  listShowsAdmin,
-  listTheatresAdmin,
-  upsertShow,
-} from "@/lib/admin.functions";
+import { deleteShow, listShowsAdmin, listTheatresAdmin, upsertShow } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,15 +24,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { inr } from "@/lib/pricing";
+import { inr, seatPrice } from "@/lib/pricing";
 import { formatShowDate, formatTime, toLocalDateString } from "@/lib/dates";
 
 export const Route = createFileRoute("/_authenticated/admin/shows")({
   head: () => ({
-    meta: [
-      { title: "Manage Shows — CineBook Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Manage Shows — CineBook Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminShowsPage,
 });
@@ -53,6 +45,8 @@ type ShowRow = {
   show_date: string;
   show_time: string;
   base_price: number;
+  gold_price: number | null;
+  premium_price: number | null;
   movies: { title: string } | null;
   screens: { name: string; theatres: { name: string } | null } | null;
 };
@@ -64,6 +58,8 @@ function AdminShowsPage() {
   const [date, setDate] = useState(toLocalDateString(new Date()));
   const [time, setTime] = useState("19:00");
   const [price, setPrice] = useState("250");
+  const [goldPrice, setGoldPrice] = useState("");
+  const [premiumPrice, setPremiumPrice] = useState("");
   const [busy, setBusy] = useState(false);
 
   const { data: shows, isLoading } = useQuery({
@@ -103,6 +99,8 @@ function AdminShowsPage() {
           show_date: date,
           show_time: time.length === 5 ? `${time}:00` : time,
           base_price: Number(price) || 0,
+          gold_price: goldPrice.trim() ? Number(goldPrice) : null,
+          premium_price: premiumPrice.trim() ? Number(premiumPrice) : null,
         },
       });
       toast.success("Show created.");
@@ -130,6 +128,10 @@ function AdminShowsPage() {
       <h1 className="font-display text-3xl tracking-wider text-foreground">Shows</h1>
 
       <div className="grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-6">
+        <p className="text-xs text-muted-foreground md:col-span-6">
+          Set a base (Silver) price, then optionally override Gold and Premium — leave them blank to
+          fall back to the default multiplier.
+        </p>
         <div className="grid gap-1 md:col-span-2">
           <Label className="text-xs">Movie</Label>
           <Select value={movieId} onValueChange={setMovieId}>
@@ -171,11 +173,29 @@ function AdminShowsPage() {
           <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
         <div className="grid gap-1">
-          <Label className="text-xs">Base price (₹)</Label>
+          <Label className="text-xs text-tier-silver">Silver price (₹)</Label>
           <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
         </div>
-        <div className="flex items-end">
-          <Button onClick={handleAdd} disabled={busy} className="w-full">
+        <div className="grid gap-1">
+          <Label className="text-xs text-tier-gold">Gold price (₹)</Label>
+          <Input
+            type="number"
+            placeholder="auto (1.5×)"
+            value={goldPrice}
+            onChange={(e) => setGoldPrice(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1">
+          <Label className="text-xs text-tier-premium">Platinum price (₹)</Label>
+          <Input
+            type="number"
+            placeholder="auto (2.2×)"
+            value={premiumPrice}
+            onChange={(e) => setPremiumPrice(e.target.value)}
+          />
+        </div>
+        <div className="flex items-end md:col-span-6">
+          <Button onClick={handleAdd} disabled={busy} className="w-fit">
             <Plus className="mr-1.5 h-4 w-4" /> Add show
           </Button>
         </div>
@@ -192,7 +212,9 @@ function AdminShowsPage() {
                 <TableHead>Venue</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Time</TableHead>
-                <TableHead className="text-right">Base price</TableHead>
+                <TableHead className="text-right text-tier-silver">Silver</TableHead>
+                <TableHead className="text-right text-tier-gold">Gold</TableHead>
+                <TableHead className="text-right text-tier-premium">Platinum</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -207,6 +229,12 @@ function AdminShowsPage() {
                   <TableCell>{formatTime(s.show_time)}</TableCell>
                   <TableCell className="text-right">{inr(s.base_price)}</TableCell>
                   <TableCell className="text-right">
+                    {inr(seatPrice(s.base_price, "gold", s))}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {inr(seatPrice(s.base_price, "premium", s))}
+                  </TableCell>
+                  <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(s.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -215,7 +243,7 @@ function AdminShowsPage() {
               ))}
               {showRows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No shows scheduled.
                   </TableCell>
                 </TableRow>

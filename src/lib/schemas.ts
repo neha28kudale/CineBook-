@@ -2,7 +2,10 @@ import { z } from "zod";
 
 export const lockSeatsInput = z.object({
   showId: z.string().uuid(),
-  seatIds: z.array(z.string().uuid()).min(1, "Select at least one seat").max(10, "Max 10 seats per booking"),
+  seatIds: z
+    .array(z.string().uuid())
+    .min(1, "Select at least one seat")
+    .max(10, "Max 10 seats per booking"),
 });
 
 export const releaseLocksInput = z.object({
@@ -76,6 +79,8 @@ export const showInput = z.object({
   show_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   show_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
   base_price: z.number().min(1).max(10000),
+  gold_price: z.number().min(1).max(20000).nullable().default(null),
+  premium_price: z.number().min(1).max(20000).nullable().default(null),
 });
 
 export const foodItemInput = z.object({

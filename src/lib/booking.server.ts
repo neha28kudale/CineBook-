@@ -55,7 +55,12 @@ export async function addFoodToBooking(
     .map((f) => {
       const item = items?.find((i) => i.id === f.foodItemId && i.is_available);
       return item
-        ? { booking_id: input.bookingId, food_item_id: item.id, quantity: f.quantity, price_at_order: item.price }
+        ? {
+            booking_id: input.bookingId,
+            food_item_id: item.id,
+            quantity: f.quantity,
+            price_at_order: item.price,
+          }
         : null;
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
@@ -105,7 +110,12 @@ export async function lockSeats(client: Client, showId: string, seatIds: string[
   return result;
 }
 
-export async function releaseLocks(client: Client, userId: string, showId: string, seatIds?: string[]) {
+export async function releaseLocks(
+  client: Client,
+  userId: string,
+  showId: string,
+  seatIds?: string[],
+) {
   let query = client
     .from("show_seats")
     .delete()
@@ -131,7 +141,7 @@ export async function confirmBooking(
 ) {
   const { data: show, error: showError } = await client
     .from("shows")
-    .select("id, base_price, show_date, show_time")
+    .select("id, base_price, gold_price, premium_price, show_date, show_time")
     .eq("id", input.showId)
     .single();
   if (showError) throw new Error("Show not found");
@@ -158,7 +168,7 @@ export async function confirmBooking(
   if (seatsError || !seats?.length) throw new Error("Seats not found");
 
   const ticketTotal = seats.reduce(
-    (sum, seat) => sum + seatPrice(show.base_price, seat.seat_type as SeatTier),
+    (sum, seat) => sum + seatPrice(show.base_price, seat.seat_type as SeatTier, show),
     0,
   );
 
@@ -218,7 +228,7 @@ export async function confirmBooking(
     seats.map((seat) => ({
       booking_id: booking.id,
       seat_id: seat.id,
-      price: seatPrice(show.base_price, seat.seat_type as SeatTier),
+      price: seatPrice(show.base_price, seat.seat_type as SeatTier, show),
     })),
   );
   if (bsError) throw new Error(bsError.message);

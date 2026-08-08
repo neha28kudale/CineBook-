@@ -1,14 +1,19 @@
 import { createFileRoute, getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Timer, Ticket, Popcorn, CreditCard, ArrowLeft } from "lucide-react";
+import {
+  Loader2,
+  Timer,
+  Ticket,
+  Popcorn,
+  CreditCard,
+  ArrowLeft,
+  MapPin,
+  SkipForward,
+} from "lucide-react";
 import { toast } from "sonner";
 import { getSeatMap, listFoodItems } from "@/lib/movies.functions";
-import {
-  confirmBookingFn,
-  lockSeatsFn,
-  releaseLocksFn,
-} from "@/lib/booking.functions";
+import { confirmBookingFn, lockSeatsFn, releaseLocksFn } from "@/lib/booking.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { SeatMap, type SeatInfo } from "@/components/seat-map";
 import { FoodMenu } from "@/components/food-menu";
@@ -24,10 +29,7 @@ const parentApi = getRouteApi("/_authenticated");
 
 export const Route = createFileRoute("/_authenticated/book/$showId")({
   head: () => ({
-    meta: [
-      { title: "Select seats — CineBook" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Select seats — CineBook" }, { name: "robots", content: "noindex" }],
   }),
   component: BookingFlowPage,
 });
@@ -114,7 +116,7 @@ function BookingFlowPage() {
 
   const basePrice = data?.show.base_price ?? 0;
   const ticketTotal = selectedSeats.reduce(
-    (sum, seat) => sum + seatPrice(basePrice, seat.seat_type),
+    (sum, seat) => sum + seatPrice(basePrice, seat.seat_type, data?.show),
     0,
   );
 
@@ -225,13 +227,17 @@ function BookingFlowPage() {
     <main className="mx-auto max-w-6xl px-4 py-8">
       {/* Show header */}
       <div className="mb-6">
-        <h1 className="font-display text-4xl tracking-wide text-foreground">
-          {show.movie?.title}
-        </h1>
+        <h1 className="font-display text-4xl tracking-wide text-foreground">{show.movie?.title}</h1>
         <p className="text-sm text-muted-foreground">
           {show.screen?.theatres?.name}, {show.screen?.theatres?.city} · {show.screen?.name} ·{" "}
           {formatShowDate(show.show_date)} · {formatTime(show.show_time)}
         </p>
+        {show.screen?.theatres?.address && (
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+            {show.screen.theatres.address}
+          </p>
+        )}
       </div>
 
       {/* Stepper */}
@@ -278,6 +284,7 @@ function BookingFlowPage() {
               showSeats={data.showSeats}
               currentUserId={user.id}
               basePrice={basePrice}
+              tierOverrides={data.show}
               selectedIds={selection}
               onToggle={toggleSeat}
             />
@@ -285,14 +292,24 @@ function BookingFlowPage() {
 
           {step === "food" && (
             <div className="space-y-6">
-              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
-                <p className="font-semibold text-primary">
-                  Pre-order now, skip the interval queue.
-                </p>
-                <p className="mt-1 text-muted-foreground">
-                  Your order is linked to your ticket — show the same QR code at the F&amp;B
-                  counter and collect everything before the movie starts.
-                </p>
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+                <div>
+                  <p className="font-semibold text-primary">
+                    Pre-order now, skip the interval queue.
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    Your order is linked to your ticket — show the same QR code at the F&amp;B
+                    counter and collect everything before the movie starts.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                  onClick={() => setStep("pay")}
+                >
+                  <SkipForward className="h-3.5 w-3.5" /> Skip &amp; pay now
+                </Button>
               </div>
               <FoodMenu
                 items={foodItems ?? []}
@@ -325,7 +342,7 @@ function BookingFlowPage() {
                       Seat {seat.row_label}
                       {seat.seat_number} · {TIER_LABELS[seat.seat_type]}
                     </span>
-                    <span>{inr(seatPrice(basePrice, seat.seat_type))}</span>
+                    <span>{inr(seatPrice(basePrice, seat.seat_type, data.show))}</span>
                   </div>
                 ))}
                 {foodLines.map((l) => (
@@ -404,14 +421,24 @@ function BookingFlowPage() {
                 >
                   Continue to payment
                 </Button>
-                <Button variant="ghost" className="w-full" onClick={() => setStep("pay")}>
-                  Skip food &amp; drinks
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleBackToSeats}
+                <div className="relative py-1 text-center">
+                  <span className="relative z-10 bg-card px-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+                    or
+                  </span>
+                  <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep("pay")}
+                  className="flex w-full items-center justify-between rounded-lg border border-dashed border-border px-3 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                 >
+                  <span className="flex items-center gap-2">
+                    <SkipForward className="h-4 w-4" />
+                    Skip food &amp; drinks
+                  </span>
+                  <span className="text-xs">Go straight to payment</span>
+                </button>
+                <Button variant="outline" className="w-full" onClick={handleBackToSeats}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Change seats
                 </Button>
               </>

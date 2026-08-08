@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Check, Armchair } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { seatPrice, inr, type SeatTier } from "@/lib/pricing";
+import { seatPrice, inr, type SeatTier, type TierPriceOverrides } from "@/lib/pricing";
 
 export type SeatInfo = {
   id: string;
@@ -25,6 +25,7 @@ export function SeatMap({
   showSeats,
   currentUserId,
   basePrice,
+  tierOverrides,
   selectedIds,
   onToggle,
 }: {
@@ -32,6 +33,7 @@ export function SeatMap({
   showSeats: ShowSeatInfo[];
   currentUserId: string | null;
   basePrice: number;
+  tierOverrides?: TierPriceOverrides;
   selectedIds: string[];
   onToggle: (seatId: string) => void;
 }) {
@@ -132,7 +134,7 @@ export function SeatMap({
                     disabled={false}
                     onClick={() => handleClick(seat)}
                     className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-t-lg border text-[10px] font-semibold transition-colors sm:h-9 sm:w-9",
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-t-lg border text-xs font-semibold transition-colors sm:h-10 sm:w-10 sm:text-sm",
                       shakingId === seat.id && "animate-shake",
                       status === "available" &&
                         "border-seat-available/50 bg-seat-available/10 text-seat-available hover:bg-seat-available/30",
@@ -144,11 +146,7 @@ export function SeatMap({
                         "animate-pulse-hold cursor-not-allowed border-seat-locked/50 bg-seat-locked/25 text-seat-locked",
                     )}
                   >
-                    {status === "selected" ? (
-                      <Check className="h-3.5 w-3.5" />
-                    ) : (
-                      seat.seat_number
-                    )}
+                    {status === "selected" ? <Check className="h-3.5 w-3.5" /> : seat.seat_number}
                   </button>
                 );
               })}
@@ -158,21 +156,23 @@ export function SeatMap({
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <span className="h-4 w-4 rounded-t-md border border-seat-available/50 bg-seat-available/10" />
+      <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 rounded-xl border border-border bg-card/50 px-4 py-3 text-sm font-medium text-foreground">
+        <span className="flex items-center gap-2.5">
+          <span className="h-6 w-6 rounded-t-lg border-2 border-seat-available/60 bg-seat-available/10" />
           Available
         </span>
-        <span className="flex items-center gap-2">
-          <span className="h-4 w-4 rounded-t-md border border-primary bg-primary" />
+        <span className="flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-t-lg border-2 border-primary bg-primary">
+            <Check className="h-3.5 w-3.5 text-primary-foreground" />
+          </span>
           Selected
         </span>
-        <span className="flex items-center gap-2">
-          <span className="h-4 w-4 rounded-t-md border border-seat-booked/40 bg-seat-booked/25" />
+        <span className="flex items-center gap-2.5">
+          <span className="h-6 w-6 rounded-t-lg border-2 border-seat-booked/50 bg-seat-booked/25" />
           Booked
         </span>
-        <span className="flex items-center gap-2">
-          <span className="h-4 w-4 rounded-t-md border border-seat-locked/50 bg-seat-locked/25" />
+        <span className="flex items-center gap-2.5">
+          <span className="h-6 w-6 rounded-t-lg border-2 border-seat-locked/60 bg-seat-locked/25" />
           On hold
         </span>
       </div>
@@ -183,13 +183,14 @@ export function SeatMap({
           <span
             key={tier}
             className={cn(
-              "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs",
+              "flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold",
               tierChip[tier],
             )}
           >
-            <Armchair className="h-3 w-3" />
-            {tier === "premium" ? "Recliner" : tier.charAt(0).toUpperCase() + tier.slice(1)}{" "}
-            {inr(seatPrice(basePrice, tier))}
+            <Armchair className="h-4 w-4" />
+            {tier === "premium" ? "Platinum" : tier.charAt(0).toUpperCase() + tier.slice(1)}
+            <span className="opacity-70">·</span>
+            {inr(seatPrice(basePrice, tier, tierOverrides))}
           </span>
         ))}
       </div>

@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -10,6 +10,11 @@ import {
   Ticket,
   ShieldCheck,
   Tag,
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  Clock,
+  X,
 } from "lucide-react";
 import { listMovies } from "@/lib/movies.functions";
 import { MovieCard } from "@/components/movie-card";
@@ -17,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -55,50 +61,111 @@ const OFFERS = [
 function HomePage() {
   const [status, setStatus] = useState<"now_showing" | "upcoming">("now_showing");
   const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const navigate = useNavigate();
+  const searchBoxRef = useRef<HTMLDivElement>(null);
 
   const { data: movies, isLoading } = useQuery({
     queryKey: ["movies", status, search],
     queryFn: () => listMovies({ data: { status, search: search || undefined } }),
   });
 
-  const featured = movies?.[0];
+  const { data: nowShowing } = useQuery({
+    queryKey: ["movies", "now_showing", undefined],
+    queryFn: () => listMovies({ data: { status: "now_showing" } }),
+  });
+
+  const slides = (nowShowing ?? []).slice(0, 5);
+  const featured = slides[heroIndex] ?? slides[0];
+
+  // Auto-rotate the hero every 5s; pause implicitly stops on unmount.
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const timer = setInterval(() => {
+      setHeroIndex((i) => (i + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  // Close the search dropdown on outside click.
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  const searchResults = search.trim() ? (movies ?? []).slice(0, 6) : [];
+
+  function goToMovie(id: string) {
+    setSearchOpen(false);
+    navigate({ to: "/movies/$movieId", params: { movieId: id } });
+  }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* Left column */}
         <div className="space-y-6">
-          {/* Hero banner */}
+          {/* Hero banner — rotating posters of now-showing movies */}
           <section className="relative overflow-hidden rounded-2xl border border-border">
-            <img
-              src={featured?.poster_url ?? "/images/hero-lobby.jpg"}
-              alt={featured ? `${featured.title} backdrop` : "Cinema lobby"}
-              className="absolute inset-0 h-full w-full object-cover object-top"
-            />
+            {slides.length > 0 ? (
+              slides.map((m, i) => (
+                <img
+                  key={m.id}
+                  src={m.poster_url}
+                  alt={`${m.title} backdrop`}
+                  className={cn(
+                    "absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-1000 ease-in-out",
+                    i === heroIndex ? "opacity-100" : "opacity-0",
+                  )}
+                />
+              ))
+            ) : (
+              <img
+                src="/images/hero-lobby.jpg"
+                alt="Cinema lobby"
+                className="absolute inset-0 h-full w-full object-cover object-top"
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/20" />
-            <div className="relative flex min-h-[300px] flex-col justify-center gap-4 p-8 sm:min-h-[360px] sm:max-w-lg">
+            <div
+              key={featured?.id ?? "empty"}
+              className="animate-in fade-in slide-in-from-bottom-2 relative flex min-h-[300px] flex-col justify-center gap-4 p-8 duration-500 sm:min-h-[380px] sm:max-w-lg"
+            >
               <span className="w-fit rounded-md bg-primary/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
                 In cinemas now
               </span>
               <h1 className="font-display text-5xl leading-[0.95] text-foreground sm:text-6xl">
                 {featured?.title ?? "Skip the queue."}
               </h1>
-              <p className="text-sm text-muted-foreground">
-                {featured
-                  ? `${featured.genre} · ${Math.floor(featured.duration_min / 60)}h ${
-                      featured.duration_min % 60
-                    }m · ${featured.language}`
-                  : "Pick seats, pre-order snacks, pay online."}
+              <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                {featured ? (
+                  <>
+                    <span className="flex items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-xs font-bold text-primary">
+                      <Star className="h-3 w-3 fill-primary" /> {featured.rating.toFixed(1)}
+                    </span>
+                    {featured.genre} ·{" "}
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {Math.floor(featured.duration_min / 60)}h {featured.duration_min % 60}m
+                    </span>{" "}
+                    · {featured.language}
+                  </>
+                ) : (
+                  "Pick seats, pre-order snacks, pay online."
+                )}
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   asChild
                   className="bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
                 >
-                  <Link
-                    to="/movies/$movieId"
-                    params={{ movieId: featured?.id ?? "" }}
-                  >
+                  <Link to="/movies/$movieId" params={{ movieId: featured?.id ?? "" }}>
                     <Ticket className="mr-2 h-4 w-4" /> Book tickets
                   </Link>
                 </Button>
@@ -109,19 +176,118 @@ function HomePage() {
                 </Button>
               </div>
             </div>
+
+            {slides.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Previous movie"
+                  onClick={() => setHeroIndex((i) => (i - 1 + slides.length) % slides.length)}
+                  className="absolute left-3 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/70 text-foreground backdrop-blur-sm transition-colors hover:bg-background sm:flex"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next movie"
+                  onClick={() => setHeroIndex((i) => (i + 1) % slides.length)}
+                  className="absolute right-3 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/70 text-foreground backdrop-blur-sm transition-colors hover:bg-background sm:flex"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+                <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
+                  {slides.map((m, i) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      aria-label={`Show ${m.title}`}
+                      onClick={() => setHeroIndex(i)}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all",
+                        i === heroIndex ? "w-6 bg-primary" : "w-1.5 bg-foreground/30",
+                      )}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </section>
 
           {/* Search bar */}
-          <section className="rounded-xl border border-border bg-card p-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search for movies…"
-                className="h-11 border-border bg-background pl-10"
-              />
+          <section ref={searchBoxRef} className="relative">
+            <div className="relative rounded-xl border border-border bg-card p-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setSearchOpen(true);
+                  }}
+                  onFocus={() => search.trim() && setSearchOpen(true)}
+                  placeholder="Search for movies…"
+                  className="h-11 border-border bg-background pl-10 pr-9"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    aria-label="Clear search"
+                    onClick={() => {
+                      setSearch("");
+                      setSearchOpen(false);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Dropdown results */}
+            {searchOpen && search.trim() && (
+              <div className="absolute inset-x-0 top-full z-30 mt-2 max-h-96 overflow-y-auto rounded-xl border border-border bg-card shadow-card-lift">
+                {isLoading ? (
+                  <div className="space-y-2 p-3">
+                    <Skeleton className="h-14 rounded-lg" />
+                    <Skeleton className="h-14 rounded-lg" />
+                  </div>
+                ) : searchResults.length ? (
+                  <ul className="divide-y divide-border">
+                    {searchResults.map((m) => (
+                      <li key={m.id}>
+                        <button
+                          type="button"
+                          onClick={() => goToMovie(m.id)}
+                          className="flex w-full items-center gap-3 p-2.5 text-left transition-colors hover:bg-primary/5"
+                        >
+                          <img
+                            src={m.poster_url}
+                            alt=""
+                            className="h-14 w-10 shrink-0 rounded-md object-cover"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-card-foreground">
+                              {m.title}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {m.genre} · {m.language}
+                            </p>
+                          </div>
+                          <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-primary">
+                            <Star className="h-3 w-3 fill-primary" /> {m.rating.toFixed(1)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="p-4 text-center text-sm text-muted-foreground">
+                    No movies found for "{search}".
+                  </p>
+                )}
+              </div>
+            )}
           </section>
 
           {/* Movies */}
