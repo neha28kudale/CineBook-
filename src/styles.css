@@ -1,0 +1,219 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * CineBook design system — dark cinema lobby theme.
+ * Deep charcoal surfaces, warm amber marquee accent, seat-state palette.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Seat map palette */
+  --color-seat-available: var(--seat-available);
+  --color-seat-booked: var(--seat-booked);
+  --color-seat-locked: var(--seat-locked);
+  --color-tier-silver: var(--tier-silver);
+  --color-tier-gold: var(--tier-gold);
+  --color-tier-premium: var(--tier-premium);
+
+  /* Typography */
+  --font-display: "Bebas Neue", "Arial Narrow", sans-serif;
+  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+}
+
+@theme {
+  --animate-shake: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  --animate-seat-pop: seat-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-pulse-hold: pulse-hold 1.5s ease-in-out infinite;
+  --animate-screen-flicker: screen-flicker 5s ease-in-out infinite;
+
+  @keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-3px); }
+    40%, 60% { transform: translateX(3px); }
+  }
+  @keyframes seat-pop {
+    0% { transform: scale(0.7); }
+    60% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+  @keyframes pulse-hold {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+  @keyframes screen-flicker {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 1; }
+  }
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.155 0.012 264);
+  --foreground: oklch(0.94 0.012 85);
+  --card: oklch(0.195 0.014 264);
+  --card-foreground: oklch(0.94 0.012 85);
+  --popover: oklch(0.21 0.015 264);
+  --popover-foreground: oklch(0.94 0.012 85);
+  --primary: oklch(0.78 0.155 78);
+  --primary-foreground: oklch(0.21 0.03 75);
+  --secondary: oklch(0.24 0.016 264);
+  --secondary-foreground: oklch(0.94 0.012 85);
+  --muted: oklch(0.235 0.015 264);
+  --muted-foreground: oklch(0.66 0.02 264);
+  --accent: oklch(0.28 0.02 264);
+  --accent-foreground: oklch(0.94 0.012 85);
+  --destructive: oklch(0.62 0.21 25);
+  --destructive-foreground: oklch(0.96 0.01 85);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.78 0.155 78);
+  --chart-1: oklch(0.78 0.155 78);
+  --chart-2: oklch(0.7 0.15 195);
+  --chart-3: oklch(0.65 0.19 25);
+  --chart-4: oklch(0.72 0.14 145);
+  --chart-5: oklch(0.7 0.15 310);
+  --sidebar: oklch(0.18 0.013 264);
+  --sidebar-foreground: oklch(0.94 0.012 85);
+  --sidebar-primary: oklch(0.78 0.155 78);
+  --sidebar-primary-foreground: oklch(0.21 0.03 75);
+  --sidebar-accent: oklch(0.26 0.016 264);
+  --sidebar-accent-foreground: oklch(0.94 0.012 85);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.78 0.155 78);
+
+  /* Seat states */
+  --seat-available: oklch(0.72 0.17 158);
+  --seat-booked: oklch(0.58 0.2 25);
+  --seat-locked: oklch(0.78 0.155 78);
+  --tier-silver: oklch(0.72 0.01 264);
+  --tier-gold: oklch(0.78 0.155 78);
+  --tier-premium: oklch(0.68 0.16 330);
+
+  /* Signature effects */
+  --screen-glow: radial-gradient(ellipse 70% 100% at 50% 100%, oklch(0.85 0.1 90 / 55%) 0%, oklch(0.85 0.1 90 / 12%) 45%, transparent 75%);
+  --shadow-marquee: 0 0 24px oklch(0.78 0.155 78 / 35%), 0 0 64px oklch(0.78 0.155 78 / 12%);
+  --shadow-card-lift: 0 18px 40px -18px oklch(0 0 0 / 80%);
+  --gradient-hero: linear-gradient(180deg, oklch(0.155 0.012 264 / 35%) 0%, oklch(0.155 0.012 264 / 78%) 62%, var(--background) 100%);
+  --gradient-poster-shine: linear-gradient(105deg, transparent 40%, oklch(1 0 0 / 12%) 50%, transparent 60%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background: oklch(0.78 0.155 78 / 35%);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: 0.04em;
+  }
+  .screen-glow {
+    background: var(--screen-glow);
+  }
+  .shadow-marquee {
+    box-shadow: var(--shadow-marquee);
+  }
+  .shadow-card-lift {
+    box-shadow: var(--shadow-card-lift);
+  }
+  .hero-overlay {
+    background: var(--gradient-hero);
+  }
+  .seat-grid-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted) transparent;
+  }
+  .poster-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .poster-shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-poster-shine);
+    transform: translateX(-100%);
+    transition: transform 0.7s ease;
+    pointer-events: none;
+  }
+  .poster-shine:hover::after {
+    transform: translateX(100%);
+  }
+}
+
+/* Print only the ticket */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
