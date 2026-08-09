@@ -52,14 +52,18 @@ function AdminReportsPage() {
     <div className="space-y-8">
       <h1 className="font-display text-3xl tracking-wider text-foreground">Reports</h1>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {kpis.map((k) => (
-          <div key={k.label} className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <k.icon className="h-4 w-4 text-primary" />
-              <span className="text-xs font-medium uppercase tracking-wide">{k.label}</span>
+          <div key={k.label} className="min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4">
+            <div className="flex items-center gap-1.5 text-muted-foreground sm:gap-2">
+              <k.icon className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate text-[10px] font-medium uppercase tracking-wide sm:text-xs">
+                {k.label}
+              </span>
             </div>
-            <p className="mt-2 font-display text-3xl text-card-foreground">{k.value}</p>
+            <p className="font-display mt-2 truncate text-xl text-card-foreground sm:text-3xl">
+              {k.value}
+            </p>
           </div>
         ))}
       </div>

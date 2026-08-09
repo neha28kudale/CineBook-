@@ -57,22 +57,22 @@ function AdminLayout() {
   if (!allowed) return null;
 
   return (
-    <div className="mx-auto flex max-w-7xl gap-8 px-4 py-8">
-      <aside className="w-52 shrink-0">
-        <p className="mb-3 px-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+    <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 md:flex-row md:gap-8 md:py-8">
+      <aside className="md:w-52 md:shrink-0">
+        <p className="mb-3 hidden px-3 text-xs font-bold uppercase tracking-widest text-muted-foreground md:block">
           Admin console
         </p>
-        <nav className="space-y-1">
+        <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-col md:gap-1 md:overflow-visible md:px-0 md:pb-0 md:space-y-1">
           {NAV.map((item) => (
             <Link
               key={item.to}
               to={item.to}
               activeOptions={{ exact: item.exact ?? false }}
               activeProps={{ className: "bg-primary/10 text-primary" }}
-              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex shrink-0 items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:text-sm md:border-0 md:px-3 md:py-2"
             >
-              <item.icon className="h-4 w-4" />
-              {item.label}
+              <item.icon className="h-4 w-4 shrink-0" />
+              <span className="whitespace-nowrap">{item.label}</span>
             </Link>
           ))}
         </nav>

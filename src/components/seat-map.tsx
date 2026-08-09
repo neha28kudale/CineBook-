@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Armchair } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { seatPrice, inr, type SeatTier, type TierPriceOverrides } from "@/lib/pricing";
@@ -38,6 +38,8 @@ export function SeatMap({
   onToggle: (seatId: string) => void;
 }) {
   const [shakingId, setShakingId] = useState<string | null>(null);
+  const [isScrollable, setIsScrollable] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const stateBySeat = useMemo(() => {
@@ -96,8 +98,25 @@ export function SeatMap({
     premium: "text-tier-premium border-tier-premium/40",
   };
 
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    function check() {
+      if (!el) return;
+      setIsScrollable(el.scrollWidth > el.clientWidth + 1);
+    }
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    window.addEventListener("resize", check);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", check);
+    };
+  }, [rows]);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-7 sm:space-y-6">
       {/* Screen */}
       <div className="relative mx-auto w-full max-w-2xl">
         <div className="screen-glow animate-screen-flicker mx-auto h-16 w-4/5 rounded-t-full" />
@@ -109,88 +128,103 @@ export function SeatMap({
       </div>
 
       {/* Seat grid */}
-      <div className="seat-grid-scroll overflow-x-auto pb-2">
-        <div className="mx-auto w-fit space-y-1.5">
-          {rows.map((row) => (
-            <div key={row.label} className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  "mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded border text-[10px] font-bold",
-                  tierChip[row.tier],
-                )}
-              >
-                {row.label}
-              </span>
-              {row.seats.map((seat) => {
-                if (seat.is_aisle_gap) {
-                  return <div key={seat.id} className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />;
-                }
-                const status = stateBySeat.get(seat.id) ?? "available";
-                return (
-                  <button
-                    key={seat.id}
-                    type="button"
-                    aria-label={`Seat ${seat.row_label}${seat.seat_number} — ${status}`}
-                    disabled={false}
-                    onClick={() => handleClick(seat)}
-                    className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-t-lg border text-xs font-semibold transition-colors sm:h-10 sm:w-10 sm:text-sm",
-                      shakingId === seat.id && "animate-shake",
-                      status === "available" &&
-                        "border-seat-available/50 bg-seat-available/10 text-seat-available hover:bg-seat-available/30",
-                      status === "selected" &&
-                        "animate-seat-pop border-primary bg-primary text-primary-foreground shadow-marquee",
-                      status === "booked" &&
-                        "cursor-not-allowed border-seat-booked/40 bg-seat-booked/25 text-seat-booked/70",
-                      status === "held" &&
-                        "animate-pulse-hold cursor-not-allowed border-seat-locked/50 bg-seat-locked/25 text-seat-locked",
-                    )}
-                  >
-                    {status === "selected" ? <Check className="h-3.5 w-3.5" /> : seat.seat_number}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+      {isScrollable && (
+        <p className="-mb-2 text-center text-[11px] font-medium text-muted-foreground sm:hidden">
+          ← Swipe to see all seats →
+        </p>
+      )}
+      <div className="relative -mx-4 sm:mx-0">
+        <div ref={scrollRef} className="seat-grid-scroll overflow-x-auto px-4 py-1 sm:px-0">
+          <div className="mx-auto w-fit space-y-1.5 sm:space-y-2.5">
+            {rows.map((row) => (
+              <div key={row.label} className="flex items-center gap-1.5 sm:gap-2.5">
+                <span
+                  className={cn(
+                    "mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded border text-[10px] font-bold sm:mr-1.5 sm:h-6 sm:w-6",
+                    tierChip[row.tier],
+                  )}
+                >
+                  {row.label}
+                </span>
+                {row.seats.map((seat) => {
+                  if (seat.is_aisle_gap) {
+                    return <div key={seat.id} className="w-3 shrink-0 sm:w-6" />;
+                  }
+                  const status = stateBySeat.get(seat.id) ?? "available";
+                  return (
+                    <button
+                      key={seat.id}
+                      type="button"
+                      aria-label={`Seat ${seat.row_label}${seat.seat_number} — ${status}`}
+                      disabled={false}
+                      onClick={() => handleClick(seat)}
+                      className={cn(
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-t-lg border text-[11px] font-semibold transition-colors sm:h-10 sm:w-10 sm:text-sm",
+                        shakingId === seat.id && "animate-shake",
+                        status === "available" &&
+                          "border-seat-available/50 bg-seat-available/10 text-seat-available hover:bg-seat-available/30",
+                        status === "selected" &&
+                          "animate-seat-pop border-primary bg-primary text-primary-foreground shadow-marquee",
+                        status === "booked" &&
+                          "cursor-not-allowed border-seat-booked/40 bg-seat-booked/25 text-seat-booked/70",
+                        status === "held" &&
+                          "animate-pulse-hold cursor-not-allowed border-seat-locked/50 bg-seat-locked/25 text-seat-locked",
+                      )}
+                    >
+                      {status === "selected" ? <Check className="h-3.5 w-3.5" /> : seat.seat_number}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
+        {isScrollable && (
+          <>
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-background to-transparent sm:hidden" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-background to-transparent sm:hidden" />
+          </>
+        )}
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 rounded-xl border border-border bg-card/50 px-4 py-3 text-sm font-medium text-foreground">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-border bg-card/50 px-4 py-4 text-xs font-medium text-foreground sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-8 sm:gap-y-3 sm:px-4 sm:py-3 sm:text-sm">
         <span className="flex items-center gap-2.5">
-          <span className="h-6 w-6 rounded-t-lg border-2 border-seat-available/60 bg-seat-available/10" />
+          <span className="h-5 w-5 shrink-0 rounded-t-lg border-2 border-seat-available/60 bg-seat-available/10 sm:h-6 sm:w-6" />
           Available
         </span>
         <span className="flex items-center gap-2.5">
-          <span className="flex h-6 w-6 items-center justify-center rounded-t-lg border-2 border-primary bg-primary">
-            <Check className="h-3.5 w-3.5 text-primary-foreground" />
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-t-lg border-2 border-primary bg-primary sm:h-6 sm:w-6">
+            <Check className="h-3 w-3 text-primary-foreground sm:h-3.5 sm:w-3.5" />
           </span>
           Selected
         </span>
         <span className="flex items-center gap-2.5">
-          <span className="h-6 w-6 rounded-t-lg border-2 border-seat-booked/50 bg-seat-booked/25" />
+          <span className="h-5 w-5 shrink-0 rounded-t-lg border-2 border-seat-booked/50 bg-seat-booked/25 sm:h-6 sm:w-6" />
           Booked
         </span>
         <span className="flex items-center gap-2.5">
-          <span className="h-6 w-6 rounded-t-lg border-2 border-seat-locked/60 bg-seat-locked/25" />
+          <span className="h-5 w-5 shrink-0 rounded-t-lg border-2 border-seat-locked/60 bg-seat-locked/25 sm:h-6 sm:w-6" />
           On hold
         </span>
       </div>
 
       {/* Tier pricing */}
-      <div className="flex flex-wrap items-center justify-center gap-3">
+      <div className="grid grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
         {(["silver", "gold", "premium"] as SeatTier[]).map((tier) => (
           <span
             key={tier}
             className={cn(
-              "flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold",
+              "flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-xs font-semibold sm:gap-2 sm:px-4 sm:py-2 sm:text-sm",
               tierChip[tier],
             )}
           >
-            <Armchair className="h-4 w-4" />
-            {tier === "premium" ? "Platinum" : tier.charAt(0).toUpperCase() + tier.slice(1)}
+            <Armchair className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+            <span className="whitespace-nowrap">
+              {tier === "premium" ? "Platinum" : tier.charAt(0).toUpperCase() + tier.slice(1)}
+            </span>
             <span className="opacity-70">·</span>
-            {inr(seatPrice(basePrice, tier, tierOverrides))}
+            <span className="whitespace-nowrap">{inr(seatPrice(basePrice, tier, tierOverrides))}</span>
           </span>
         ))}
       </div>

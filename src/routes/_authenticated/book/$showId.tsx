@@ -241,36 +241,40 @@ function BookingFlowPage() {
       </div>
 
       {/* Stepper */}
-      <div className="mb-8 flex items-center gap-2">
-        {STEPS.map((s, i) => (
-          <div key={s.id} className="flex items-center gap-2">
-            <div
-              className={cn(
-                "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold",
-                i === stepIndex
-                  ? "border-primary bg-primary/10 text-primary"
-                  : i < stepIndex
-                    ? "border-seat-available/40 text-seat-available"
-                    : "border-border text-muted-foreground",
-              )}
-            >
-              <s.icon className="h-3.5 w-3.5" />
-              {s.label}
+      <div className="mb-8 flex flex-wrap items-center gap-2 sm:flex-nowrap">
+        <div className="flex flex-wrap items-center gap-2">
+          {STEPS.map((s, i) => (
+            <div key={s.id} className="flex items-center gap-1.5 sm:gap-2">
+              <div
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold sm:gap-2 sm:px-3 sm:text-xs",
+                  i === stepIndex
+                    ? "border-primary bg-primary/10 text-primary"
+                    : i < stepIndex
+                      ? "border-seat-available/40 text-seat-available"
+                      : "border-border text-muted-foreground",
+                )}
+              >
+                <s.icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">{s.label}</span>
+              </div>
+              {i < STEPS.length - 1 && <div className="h-px w-4 shrink-0 bg-border sm:w-6" />}
             </div>
-            {i < STEPS.length - 1 && <div className="h-px w-6 bg-border" />}
-          </div>
-        ))}
+          ))}
+        </div>
         {lockedUntil && remainingMs > 0 && (
           <div
             className={cn(
-              "ml-auto flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold",
+              "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold sm:ml-auto",
               remainingMs < 120000
                 ? "animate-pulse-hold border-seat-booked/50 text-seat-booked"
                 : "border-primary/40 text-primary",
             )}
           >
-            <Timer className="h-3.5 w-3.5" />
-            Hold expires in {mm}:{String(ss).padStart(2, "0")}
+            <Timer className="h-3.5 w-3.5 shrink-0" />
+            <span className="whitespace-nowrap">
+              Hold expires in {mm}:{String(ss).padStart(2, "0")}
+            </span>
           </div>
         )}
       </div>

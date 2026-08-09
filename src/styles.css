@@ -147,10 +147,24 @@
     border-color: var(--color-border);
   }
 
+  html {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  img,
+  svg,
+  video {
+    max-width: 100%;
+    height: auto;
   }
 
   ::selection {
@@ -178,6 +192,9 @@
   .seat-grid-scroll {
     scrollbar-width: thin;
     scrollbar-color: var(--muted) transparent;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
   }
   .poster-shine {
     position: relative;
