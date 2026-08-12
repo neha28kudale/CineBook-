@@ -65,12 +65,14 @@ export function SiteHeader() {
     navigate({ to: "/auth", search: {}, replace: true });
   }
 
-  const navLink = (to: string, label: string) => (
+  const navLink = (to: string, label: string, matchPrefix = false) => (
     <Link
       key={to}
       to={to}
       className={`text-sm font-medium transition-colors hover:text-primary ${
-        pathname === to ? "text-primary" : "text-muted-foreground"
+        (matchPrefix ? pathname.startsWith(to) && (to !== "/" || pathname === "/") : pathname === to)
+          ? "text-primary"
+          : "text-muted-foreground"
       }`}
     >
       {label}
@@ -89,7 +91,8 @@ export function SiteHeader() {
 
         <nav className="hidden items-center gap-7 md:flex">
           {navLink("/", "Home")}
-          {navLink("/community", "Communities")}
+          {navLink("/theatres", "Theatres", true)}
+          {navLink("/community", "Communities", true)}
           {user && navLink("/bookings", "My Bookings")}
           {user && isAdmin && navLink("/admin", "Admin")}
           {user && isTheatreAdmin && navLink("/theatre", "Theatre Dashboard")}
@@ -107,6 +110,11 @@ export function SiteHeader() {
                 <SheetClose asChild>
                   <Link to="/" className="text-sm font-medium text-foreground">
                     Home
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link to="/theatres" className="text-sm font-medium text-foreground">
+                    Theatres
                   </Link>
                 </SheetClose>
                 <SheetClose asChild>

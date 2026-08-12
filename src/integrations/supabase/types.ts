@@ -785,41 +785,93 @@ export type Database = {
           city: string;
           created_at: string;
           id: string;
+          image_url: string;
+          latitude: number | null;
+          longitude: number | null;
           name: string;
+          video_url: string;
         };
         Insert: {
           address?: string;
           city?: string;
           created_at?: string;
           id?: string;
+          image_url?: string;
+          latitude?: number | null;
+          longitude?: number | null;
           name: string;
+          video_url?: string;
         };
         Update: {
           address?: string;
           city?: string;
           created_at?: string;
           id?: string;
+          image_url?: string;
+          latitude?: number | null;
+          longitude?: number | null;
           name?: string;
+          video_url?: string;
         };
         Relationships: [];
+      };
+      theatre_admin_assignments: {
+        Row: {
+          created_at: string;
+          id: string;
+          theatre_id: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          theatre_id: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          theatre_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "theatre_admin_assignments_theatre_id_fkey";
+            columns: ["theatre_id"];
+            isOneToOne: false;
+            referencedRelation: "theatres";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       user_roles: {
         Row: {
           id: string;
           role: Database["public"]["Enums"]["app_role"];
+          theatre_id: string | null;
           user_id: string;
         };
         Insert: {
           id?: string;
           role: Database["public"]["Enums"]["app_role"];
+          theatre_id?: string | null;
           user_id: string;
         };
         Update: {
           id?: string;
           role?: Database["public"]["Enums"]["app_role"];
+          theatre_id?: string | null;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_theatre_id_fkey";
+            columns: ["theatre_id"];
+            isOneToOne: false;
+            referencedRelation: "theatres";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: {

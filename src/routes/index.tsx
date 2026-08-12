@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -15,14 +15,17 @@ import {
   Star,
   Clock,
   X,
+  Building2,
 } from "lucide-react";
-import { listMovies } from "@/lib/movies.functions";
+import { listMovies, searchCatalog, listTheatres } from "@/lib/movies.functions";
 import { MovieCard } from "@/components/movie-card";
+import { TheatreVirtualTour } from "@/components/theatre-virtual-tour";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/use-debounce";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -66,14 +69,32 @@ function HomePage() {
   const navigate = useNavigate();
   const searchBoxRef = useRef<HTMLDivElement>(null);
 
-  const { data: movies, isLoading } = useQuery({
-    queryKey: ["movies", status, search],
-    queryFn: () => listMovies({ data: { status, search: search || undefined } }),
+  const debouncedSearch = useDebounce(search, 300);
+
+  const { data: movies, isLoading, isError, error } = useQuery({
+    queryKey: ["movies", status],
+    queryFn: () => listMovies({ data: { status } }),
+  });
+
+  const { data: searchResults, isFetching: searchLoading, isError: searchError } = useQuery({
+    queryKey: ["search", debouncedSearch],
+    queryFn: () => searchCatalog({ data: { query: debouncedSearch } }),
+    enabled: debouncedSearch.trim().length >= 2,
   });
 
   const { data: nowShowing } = useQuery({
-    queryKey: ["movies", "now_showing", undefined],
+    queryKey: ["movies", "now_showing"],
     queryFn: () => listMovies({ data: { status: "now_showing" } }),
+  });
+
+  const { data: allUpcoming } = useQuery({
+    queryKey: ["movies", "upcoming"],
+    queryFn: () => listMovies({ data: { status: "upcoming" } }),
+  });
+
+  const { data: theatres } = useQuery({
+    queryKey: ["theatres"],
+    queryFn: () => listTheatres(),
   });
 
   const slides = (nowShowing ?? []).slice(0, 5);
@@ -99,15 +120,71 @@ function HomePage() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const searchResults = search.trim() ? (movies ?? []).slice(0, 6) : [];
+  type SearchMovie = {
+    id: string;
+    title: string;
+    genre: string;
+    language: string;
+    poster_url: string;
+    rating: number;
+    status: string;
+  };
+
+  const localSearchResults = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    if (q.length < 2) return [] as SearchMovie[];
+
+    const pool = [...(nowShowing ?? []), ...(allUpcoming ?? []), ...(movies ?? [])];
+    const seen = new Set<string>();
+    return pool
+      .filter((m) => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        const haystack = `${m.title} ${m.genre} ${m.language} ${m.cast_members ?? ""}`.toLowerCase();
+        return haystack.includes(q);
+      })
+      .slice(0, 8)
+      .map((m) => ({
+        id: m.id,
+        title: m.title,
+        genre: m.genre,
+        language: m.language,
+        poster_url: m.poster_url,
+        rating: m.rating,
+        status: m.status,
+      }));
+  }, [debouncedSearch, nowShowing, allUpcoming, movies]);
+
+  const movieResults = useMemo(() => {
+    if (debouncedSearch.trim().length < 2) return [] as SearchMovie[];
+    const server = searchResults?.movies ?? [];
+    const merged = [...server];
+    const seen = new Set(server.map((m) => m.id));
+    for (const m of localSearchResults) {
+      if (!seen.has(m.id)) merged.push(m);
+    }
+    return merged.slice(0, 8);
+  }, [debouncedSearch, searchResults, localSearchResults]);
+
+  const theatreResults =
+    debouncedSearch.trim().length >= 2 ? (searchResults?.theatres ?? []) : [];
+  const hasSearchResults = movieResults.length > 0 || theatreResults.length > 0;
+  const searchPending = searchLoading && debouncedSearch.trim().length >= 2;
 
   function goToMovie(id: string) {
     setSearchOpen(false);
+    setSearch("");
     navigate({ to: "/movies/$movieId", params: { movieId: id } });
   }
 
+  function goToTheatre(id: string) {
+    setSearchOpen(false);
+    setSearch("");
+    navigate({ to: "/theatres/$theatreId", params: { theatreId: id } });
+  }
+
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
+    <main className="mx-auto max-w-7xl px-4 py-6 pb-24 md:pb-6">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* Left column */}
         <div className="space-y-6">
@@ -135,12 +212,12 @@ function HomePage() {
             <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/20" />
             <div
               key={featured?.id ?? "empty"}
-              className="animate-in fade-in slide-in-from-bottom-2 relative flex min-h-[300px] flex-col justify-center gap-4 p-8 duration-500 sm:min-h-[380px] sm:max-w-lg"
+              className="animate-in fade-in slide-in-from-bottom-2 relative flex min-h-[240px] flex-col justify-center gap-3 p-5 duration-500 sm:min-h-[380px] sm:gap-4 sm:p-8"
             >
               <span className="w-fit rounded-md bg-primary/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
                 In cinemas now
               </span>
-              <h1 className="font-display text-5xl leading-[0.95] text-foreground sm:text-6xl">
+              <h1 className="font-display text-4xl leading-[0.95] text-foreground sm:text-6xl">
                 {featured?.title ?? "Skip the queue."}
               </h1>
               <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -161,19 +238,31 @@ function HomePage() {
                 )}
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  asChild
-                  className="bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
-                >
-                  <Link to="/movies/$movieId" params={{ movieId: featured?.id ?? "" }}>
-                    <Ticket className="mr-2 h-4 w-4" /> Book tickets
-                  </Link>
-                </Button>
-                <Button asChild variant="ghost" className="text-muted-foreground">
-                  <Link to="/movies/$movieId" params={{ movieId: featured?.id ?? "" }}>
-                    <Play className="mr-2 h-4 w-4" /> Watch trailer
-                  </Link>
-                </Button>
+                {featured?.id ? (
+                  <>
+                    <Button
+                      asChild
+                      className="bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Link to="/movies/$movieId" params={{ movieId: featured.id }}>
+                        <Ticket className="mr-2 h-4 w-4" /> Book tickets
+                      </Link>
+                    </Button>
+                    <Button asChild variant="ghost" className="text-muted-foreground">
+                      <Link to="/movies/$movieId" params={{ movieId: featured.id }}>
+                        <Play className="mr-2 h-4 w-4" /> Watch trailer
+                      </Link>
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    disabled={isLoading}
+                    onClick={() => setStatus("now_showing")}
+                  >
+                    {isLoading ? "Loading movies…" : "Browse movies below"}
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -225,7 +314,7 @@ function HomePage() {
                     setSearchOpen(true);
                   }}
                   onFocus={() => search.trim() && setSearchOpen(true)}
-                  placeholder="Search for movies…"
+                  placeholder="Search movies, genres, theatres…"
                   className="h-11 border-border bg-background pl-10 pr-9"
                 />
                 {search && (
@@ -245,16 +334,37 @@ function HomePage() {
             </div>
 
             {/* Dropdown results */}
-            {searchOpen && search.trim() && (
+            {searchOpen && debouncedSearch.trim().length >= 2 && (
               <div className="absolute inset-x-0 top-full z-30 mt-2 max-h-96 overflow-y-auto rounded-xl border border-border bg-card shadow-card-lift">
-                {isLoading ? (
+                {searchPending && !hasSearchResults ? (
                   <div className="space-y-2 p-3">
                     <Skeleton className="h-14 rounded-lg" />
                     <Skeleton className="h-14 rounded-lg" />
                   </div>
-                ) : searchResults.length ? (
+                ) : hasSearchResults ? (
                   <ul className="divide-y divide-border">
-                    {searchResults.map((m) => (
+                    {theatreResults.map((t) => (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          onClick={() => goToTheatre(t.id)}
+                          className="flex w-full items-center gap-3 p-2.5 text-left transition-colors hover:bg-primary/5"
+                        >
+                          <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                            <Building2 className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-card-foreground">
+                              {t.name}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              Theatre · {t.city}
+                            </p>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                    {movieResults.map((m) => (
                       <li key={m.id}>
                         <button
                           type="button"
@@ -272,6 +382,7 @@ function HomePage() {
                             </p>
                             <p className="truncate text-xs text-muted-foreground">
                               {m.genre} · {m.language}
+                              {m.status === "upcoming" ? " · Coming soon" : ""}
                             </p>
                           </div>
                           <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-primary">
@@ -283,7 +394,8 @@ function HomePage() {
                   </ul>
                 ) : (
                   <p className="p-4 text-center text-sm text-muted-foreground">
-                    No movies found for "{search}".
+                    No results for "{debouncedSearch}".
+                    {searchError ? " Server search unavailable — try refreshing." : ""}
                   </p>
                 )}
               </div>
@@ -293,13 +405,17 @@ function HomePage() {
           {/* Movies */}
           <section>
             <Tabs value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="font-display text-2xl tracking-wider text-foreground">
                   {status === "now_showing" ? "Now Showing" : "Coming Soon"}
                 </h2>
-                <TabsList>
-                  <TabsTrigger value="now_showing">Now Showing</TabsTrigger>
-                  <TabsTrigger value="upcoming">Coming Soon</TabsTrigger>
+                <TabsList className="w-full sm:w-auto">
+                  <TabsTrigger value="now_showing" className="flex-1 sm:flex-none">
+                    Now Showing
+                  </TabsTrigger>
+                  <TabsTrigger value="upcoming" className="flex-1 sm:flex-none">
+                    Coming Soon
+                  </TabsTrigger>
                 </TabsList>
               </div>
 
@@ -309,6 +425,13 @@ function HomePage() {
                     <Skeleton key={i} className="aspect-[2/3] rounded-xl" />
                   ))}
                 </div>
+              ) : isError ? (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-8 text-center">
+                  <p className="text-sm font-medium text-foreground">Could not load movies</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {error instanceof Error ? error.message : "Check your Supabase .env setup and restart the dev server."}
+                  </p>
+                </div>
               ) : movies?.length ? (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
                   {movies.map((movie) => (
@@ -316,12 +439,67 @@ function HomePage() {
                   ))}
                 </div>
               ) : (
-                <p className="py-16 text-center text-muted-foreground">
-                  No movies found{search ? ` for “${search}”` : ""}.
-                </p>
+                <p className="py-16 text-center text-muted-foreground">No movies in this section.</p>
               )}
             </Tabs>
           </section>
+
+          {(theatres?.length ?? 0) > 0 && (
+            <section>
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-2xl tracking-wider text-foreground">
+                    Explore <span className="text-primary">Theatres</span>
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Take a virtual tour before you book — see the lobby, screens, and location.
+                  </p>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/theatres">View all theatres</Link>
+                </Button>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {theatres!.slice(0, 3).map((theatre) => (
+                  <article
+                    key={theatre.id}
+                    className="overflow-hidden rounded-xl border border-border bg-card"
+                  >
+                    {theatre.image_url ? (
+                      <img
+                        src={theatre.image_url}
+                        alt={theatre.name}
+                        className="aspect-[16/10] w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex aspect-[16/10] items-center justify-center bg-muted/30">
+                        <Building2 className="h-10 w-10 text-muted-foreground/40" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <p className="font-semibold text-card-foreground">{theatre.name}</p>
+                      <p className="text-xs text-muted-foreground">{theatre.city}</p>
+                      {theatre.video_url && (
+                        <div className="mt-3">
+                          <TheatreVirtualTour
+                            theatreName={theatre.name}
+                            imageUrl={theatre.image_url}
+                            videoUrl={theatre.video_url}
+                            compact
+                          />
+                        </div>
+                      )}
+                      <Button asChild variant="ghost" size="sm" className="mt-3 h-8 w-full text-xs">
+                        <Link to="/theatres/$theatreId" params={{ theatreId: theatre.id }}>
+                          Details &amp; map
+                        </Link>
+                      </Button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Perks strip */}
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

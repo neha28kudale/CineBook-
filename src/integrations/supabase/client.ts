@@ -34,13 +34,7 @@ function createSupabaseClient() {
   const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-      ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
-    ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
-    console.error(`[Supabase] ${message}`);
-    throw new Error(message);
+    return null;
   }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -55,14 +49,58 @@ function createSupabaseClient() {
   });
 }
 
+export function isSupabaseConfigured(): boolean {
+  const url = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'];
+  const key = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
+  return !!(url && key);
+}
+
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
+
+function getSupabaseClient() {
+  if (!_supabase) {
+    _supabase = createSupabaseClient();
+    if (!_supabase && typeof window !== 'undefined') {
+      console.warn(
+        '[Supabase] Missing VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY. Copy .env.example to .env and add your project keys.',
+      );
+    }
+  }
+  return _supabase;
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
-export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
+export const supabase = new Proxy({} as ReturnType<typeof createClient<Database>>, {
   get(_, prop, receiver) {
-    if (!_supabase) _supabase = createSupabaseClient();
-    return Reflect.get(_supabase, prop, receiver);
+    const client = getSupabaseClient();
+    if (!client) {
+      if (prop === 'auth') {
+        return {
+          getUser: async () => ({ data: { user: null }, error: null }),
+          onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+          signInWithPassword: async () => ({ error: new Error('Supabase is not configured') }),
+          signUp: async () => ({ error: new Error('Supabase is not configured') }),
+          signOut: async () => ({ error: null }),
+          resetPasswordForEmail: async () => ({ error: new Error('Supabase is not configured') }),
+        };
+      }
+      if (prop === 'from') {
+        return () => ({
+          select: () => ({ eq: () => ({ in: () => Promise.resolve({ data: [], error: null }) }) }),
+        });
+      }
+      if (prop === 'channel') {
+        return () => ({ on: () => ({ subscribe: () => ({}) }), subscribe: () => ({}) });
+      }
+      if (prop === 'removeChannel') {
+        return () => {};
+      }
+      if (prop === 'rpc') {
+        return async () => ({ data: null, error: new Error('Supabase is not configured') });
+      }
+      return undefined;
+    }
+    return Reflect.get(client, prop, receiver);
   },
 });
-

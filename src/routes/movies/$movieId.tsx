@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect, useMemo } from "react";
 import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
   Star,
@@ -10,9 +10,11 @@ import {
   Film,
   MapPin,
   Clapperboard,
+  ExternalLink,
+  LogIn,
 } from "lucide-react";
-import { getMovie, listShowtimes, getMovieCast } from "@/lib/movies.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { getMovie, listShowtimesInRange, getMovieCast } from "@/lib/movies.functions";
+import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { normalizeYoutubeEmbedUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +22,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Skeleton } from "@/components/ui/skeleton";
 import { nextDays, formatTime, showDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { MovieReviews } from "@/components/movie-reviews";
+import { TheatreVirtualTour } from "@/components/theatre-virtual-tour";
 
 const movieQuery = (movieId: string) =>
   queryOptions({
@@ -27,8 +31,22 @@ const movieQuery = (movieId: string) =>
     queryFn: () => getMovie({ data: { id: movieId } }),
   });
 
+const showtimesQuery = (movieId: string, dates: string[]) =>
+  queryOptions({
+    queryKey: ["showtimes-range", movieId, dates.join(",")],
+    queryFn: () => listShowtimesInRange({ data: { movieId, dates } }),
+    enabled: dates.length > 0,
+  });
+
 export const Route = createFileRoute("/movies/$movieId")({
-  loader: ({ context, params }) => context.queryClient.ensureQueryData(movieQuery(params.movieId)),
+  loader: async ({ context, params }) => {
+    const movie = await context.queryClient.ensureQueryData(movieQuery(params.movieId));
+    if (movie.status === "now_showing") {
+      const dates = nextDays(5).map((d) => d.value);
+      await context.queryClient.ensureQueryData(showtimesQuery(params.movieId, dates));
+    }
+    return movie;
+  },
   head: ({ loaderData }) => ({
     meta: [
       { title: `${loaderData?.title ?? "Movie"} — CineBook` },
@@ -52,16 +70,49 @@ function MovieDetailPage() {
   const { movieId } = Route.useParams();
   const { data: movie } = useSuspenseQuery(movieQuery(movieId));
   const trailerUrl = normalizeYoutubeEmbedUrl(movie.trailer_url ?? "");
-  const [date, setDate] = useState(nextDays(1)[0]!.value);
-  const [trailerOpen, setTrailerOpen] = useState(false);
-  const navigate = useNavigate();
   const days = nextDays(5);
+  const dayValues = days.map((d) => d.value);
+  const [date, setDate] = useState(dayValues[0]!);
+  const [trailerOpen, setTrailerOpen] = useState(false);
+  const [userId, setUserId] = useState<string | undefined>();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
 
-  const { data: showtimes, isLoading: showsLoading } = useQuery({
-    queryKey: ["showtimes", movieId, date],
-    queryFn: () => listShowtimes({ data: { movieId, date } }),
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id);
+      setIsLoggedIn(!!data.user);
+    });
+  }, []);
+
+  const {
+    data: showtimesByDate,
+    isLoading: showsLoading,
+    isError: showsError,
+    error: showsErrorMsg,
+  } = useQuery({
+    ...showtimesQuery(movieId, dayValues),
     enabled: movie.status === "now_showing",
   });
+
+  useEffect(() => {
+    if (!showtimesByDate?.length) return;
+    const hasCurrent = showtimesByDate.some((d) => d.date === date && d.shows.length > 0);
+    if (hasCurrent) return;
+    const firstWithShows = showtimesByDate.find((d) => d.shows.length > 0);
+    if (firstWithShows) setDate(firstWithShows.date);
+  }, [showtimesByDate, date]);
+
+  const showtimes = useMemo(
+    () => showtimesByDate?.find((d) => d.date === date)?.shows ?? [],
+    [showtimesByDate, date],
+  );
+
+  const datesWithShows = useMemo(
+    () => new Set((showtimesByDate ?? []).filter((d) => d.shows.length > 0).map((d) => d.date)),
+    [showtimesByDate],
+  );
 
   const { data: cast } = useQuery({
     queryKey: ["movie-cast", movieId],
@@ -83,23 +134,35 @@ function MovieDetailPage() {
   }
 
   const now = Date.now();
-  const visibleShows = (showtimes ?? []).filter(
-    (s) => showDateTime(s.show_date, s.show_time).getTime() > now - 30 * 60 * 1000,
-  );
-  const byTheatre = new Map<string, { address: string; shows: typeof visibleShows }>();
+  const visibleShows = showtimes;
+  const byTheatre = new Map<
+    string,
+    {
+      address: string;
+      theatreId: string;
+      imageUrl: string;
+      videoUrl: string;
+      shows: typeof visibleShows;
+    }
+  >();
   for (const show of visibleShows) {
     const key = `${show.theatre_name} · ${show.city}`;
     const existing = byTheatre.get(key);
     if (existing) {
       existing.shows.push(show);
     } else {
-      byTheatre.set(key, { address: show.theatre_address ?? "", shows: [show] });
+      byTheatre.set(key, {
+        address: show.theatre_address ?? "",
+        theatreId: show.theatre_id ?? "",
+        imageUrl: show.theatre_image_url ?? "",
+        videoUrl: show.theatre_video_url ?? "",
+        shows: [show],
+      });
     }
   }
 
   return (
-    <main>
-      {/* Backdrop */}
+    <main className="pb-24 md:pb-0">
       <div className="relative overflow-hidden">
         <img
           src={movie.poster_url}
@@ -171,7 +234,6 @@ function MovieDetailPage() {
         </div>
       </div>
 
-      {/* Cast & crew */}
       {actors.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 py-10">
           <h2 className="font-display mb-4 text-2xl tracking-wider text-foreground">Cast</h2>
@@ -193,12 +255,17 @@ function MovieDetailPage() {
         </section>
       )}
 
-      {/* Showtimes */}
       {movie.status === "now_showing" && (
         <section className="mx-auto max-w-6xl px-4 pb-16">
-          <h2 className="font-display mb-4 text-3xl tracking-wider text-foreground">
-            Book tickets
-          </h2>
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <h2 className="font-display text-3xl tracking-wider text-foreground">Book tickets</h2>
+            {!isLoggedIn && (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <LogIn className="h-3.5 w-3.5" />
+                Sign in when you pick a showtime to book
+              </p>
+            )}
+          </div>
           <div className="mb-6 flex gap-2 overflow-x-auto pb-1">
             {days.map((d) => (
               <button
@@ -209,10 +276,14 @@ function MovieDetailPage() {
                   date === d.value
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border text-muted-foreground hover:border-primary/40",
+                  datesWithShows.has(d.value) && date !== d.value && "border-seat-available/30",
                 )}
               >
                 <span className="text-[10px] uppercase tracking-wider">{d.weekday}</span>
                 <span className="font-semibold">{d.label}</span>
+                {datesWithShows.has(d.value) && (
+                  <span className="mt-0.5 text-[9px] text-seat-available">Shows available</span>
+                )}
               </button>
             ))}
           </div>
@@ -222,6 +293,11 @@ function MovieDetailPage() {
               <Skeleton className="h-24 rounded-xl" />
               <Skeleton className="h-24 rounded-xl" />
             </div>
+          ) : showsError ? (
+            <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-8 text-center text-sm text-muted-foreground">
+              Could not load showtimes:{" "}
+              {showsErrorMsg instanceof Error ? showsErrorMsg.message : "Please try again."}
+            </p>
           ) : byTheatre.size === 0 ? (
             <p className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
               No shows scheduled for this date. Try another day.
@@ -230,25 +306,50 @@ function MovieDetailPage() {
             <div className="space-y-4">
               {[...byTheatre.entries()].map(([theatre, group]) => (
                 <div key={theatre} className="rounded-xl border border-border bg-card p-4">
-                  <p className="text-sm font-semibold text-card-foreground">{theatre}</p>
-                  {group.address && (
-                    <p className="mb-3 mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3 shrink-0 text-primary" />
-                      {group.address}
-                    </p>
-                  )}
-                  <div className={cn("flex flex-wrap gap-3", !group.address && "mt-3")}>
+                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-card-foreground">{theatre}</p>
+                      {group.address && (
+                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3 shrink-0 text-primary" />
+                          {group.address}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-start gap-2">
+                      {group.videoUrl && (
+                        <TheatreVirtualTour
+                          theatreName={theatre.split(" · ")[0] ?? theatre}
+                          imageUrl={group.imageUrl}
+                          videoUrl={group.videoUrl}
+                          compact
+                        />
+                      )}
+                      {group.theatreId && (
+                        <Button asChild variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+                          <Link to="/theatres/$theatreId" params={{ theatreId: group.theatreId }}>
+                            <ExternalLink className="h-3 w-3" /> View theatre
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 sm:gap-3">
                     {group.shows.map((show) => {
                       const fillingFast = show.available_seats <= 15;
                       const soldOut = show.available_seats === 0;
+                      const started =
+                        showDateTime(show.show_date, show.show_time).getTime() <
+                        now - 30 * 60 * 1000;
+                      const disabled = soldOut || started;
                       return (
                         <button
                           key={show.id}
-                          disabled={soldOut}
-                          onClick={() => handleShowtime(show.id)}
+                          disabled={disabled}
+                          onClick={() => !disabled && handleShowtime(show.id)}
                           className={cn(
                             "flex flex-col items-center rounded-lg border px-4 py-2 transition-colors",
-                            soldOut
+                            disabled
                               ? "cursor-not-allowed border-border text-muted-foreground/50"
                               : "border-seat-available/40 text-seat-available hover:bg-seat-available/10",
                           )}
@@ -256,11 +357,13 @@ function MovieDetailPage() {
                           <span className="text-sm font-bold">{formatTime(show.show_time)}</span>
                           <span className="text-[10px] text-muted-foreground">
                             {show.screen_name} ·{" "}
-                            {soldOut
-                              ? "Sold out"
-                              : fillingFast
-                                ? "Filling fast"
-                                : `${show.available_seats} left`}
+                            {started
+                              ? "Started"
+                              : soldOut
+                                ? "Sold out"
+                                : fillingFast
+                                  ? "Filling fast"
+                                  : `${show.available_seats} left`}
                           </span>
                         </button>
                       );
@@ -273,7 +376,8 @@ function MovieDetailPage() {
         </section>
       )}
 
-      {/* Trailer dialog */}
+      <MovieReviews movieId={movieId} userId={userId} />
+
       <Dialog open={trailerOpen} onOpenChange={setTrailerOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>

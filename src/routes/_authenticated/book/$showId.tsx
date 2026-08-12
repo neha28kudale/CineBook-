@@ -1,4 +1,4 @@
-import { createFileRoute, getRouteApi, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { SeatMap, type SeatInfo } from "@/components/seat-map";
 import { FoodMenu } from "@/components/food-menu";
 import { PaymentDialog, type PaymentMethod } from "@/components/payment-dialog";
+import { BookingThankYouDialog } from "@/components/booking-thank-you-dialog";
+import { TheatreVirtualTour } from "@/components/theatre-virtual-tour";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,6 +58,8 @@ function BookingFlowPage() {
   const [payOpen, setPayOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [locking, setLocking] = useState(false);
+  const [thankYouOpen, setThankYouOpen] = useState(false);
+  const [confirmedBookingId, setConfirmedBookingId] = useState<string | null>(null);
   const expiredRef = useRef(false);
 
   const { data, isLoading, refetch } = useQuery({
@@ -196,8 +200,8 @@ function BookingFlowPage() {
           paymentMethod: method,
         },
       });
-      toast.success("Booking confirmed! Enjoy the show.");
-      navigate({ to: "/booking/$bookingId", params: { bookingId: result.bookingId } });
+      setConfirmedBookingId(result.bookingId);
+      setThankYouOpen(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Payment failed. Please try again.");
       setLockedUntil(null);
@@ -219,24 +223,43 @@ function BookingFlowPage() {
   }
 
   const { show } = data;
+  const theatre = show.screen?.theatres;
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const mm = Math.max(0, Math.floor(remainingMs / 60000));
   const ss = Math.max(0, Math.floor((remainingMs % 60000) / 1000));
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="mx-auto max-w-6xl px-4 py-8 pb-32 lg:pb-8">
       {/* Show header */}
-      <div className="mb-6">
-        <h1 className="font-display text-4xl tracking-wide text-foreground">{show.movie?.title}</h1>
-        <p className="text-sm text-muted-foreground">
-          {show.screen?.theatres?.name}, {show.screen?.theatres?.city} · {show.screen?.name} ·{" "}
-          {formatShowDate(show.show_date)} · {formatTime(show.show_time)}
-        </p>
-        {show.screen?.theatres?.address && (
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
-            {show.screen.theatres.address}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-display text-4xl tracking-wide text-foreground">{show.movie?.title}</h1>
+          <p className="text-sm text-muted-foreground">
+            {theatre?.name}, {theatre?.city} · {show.screen?.name} ·{" "}
+            {formatShowDate(show.show_date)} · {formatTime(show.show_time)}
           </p>
+          {theatre?.address && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+              {theatre.address}
+            </p>
+          )}
+          {theatre?.id && (
+            <Button asChild variant="link" size="sm" className="mt-1 h-auto px-0 text-xs">
+              <Link to="/theatres/$theatreId" params={{ theatreId: theatre.id }}>
+                View theatre details &amp; map
+              </Link>
+            </Button>
+          )}
+        </div>
+        {theatre?.video_url && (
+          <TheatreVirtualTour
+            theatreName={theatre.name ?? "Theatre"}
+            imageUrl={theatre.image_url}
+            videoUrl={theatre.video_url}
+            compact
+            className="w-full sm:max-w-[220px]"
+          />
         )}
       </div>
 
@@ -463,6 +486,54 @@ function BookingFlowPage() {
         processing={processing}
         onPay={handlePay}
       />
+
+      <BookingThankYouDialog
+        open={thankYouOpen}
+        onOpenChange={setThankYouOpen}
+        movieTitle={show.movie?.title ?? "Movie"}
+        theatreName={theatre?.name ?? "Theatre"}
+        showDate={formatShowDate(show.show_date)}
+        showTime={formatTime(show.show_time)}
+        seatLabels={selectedSeats.map((s) => `${s.row_label}${s.seat_number}`)}
+        totalAmount={grandTotal}
+        foodCount={foodLines.reduce((s, l) => s + l.qty, 0)}
+        onViewTicket={() => {
+          if (confirmedBookingId) {
+            navigate({ to: "/booking/$bookingId", params: { bookingId: confirmedBookingId } });
+          }
+        }}
+        onBookAnother={() => navigate({ to: "/" })}
+      />
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-4 backdrop-blur-md lg:hidden">
+        {step === "seats" && (
+          <Button
+            className="w-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+            disabled={!selection.length || locking}
+            onClick={handleLockSeats}
+          >
+            {locking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Lock {selection.length || ""} seat{selection.length !== 1 ? "s" : ""} · {inr(ticketTotal || basePrice)}
+          </Button>
+        )}
+        {step === "food" && (
+          <Button
+            className="w-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+            onClick={() => setStep("pay")}
+          >
+            Continue · {inr(grandTotal)}
+          </Button>
+        )}
+        {step === "pay" && (
+          <Button
+            className="w-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+            size="lg"
+            onClick={() => setPayOpen(true)}
+          >
+            <CreditCard className="mr-2 h-4 w-4" /> Pay {inr(grandTotal)}
+          </Button>
+        )}
+      </div>
     </main>
   );
 }

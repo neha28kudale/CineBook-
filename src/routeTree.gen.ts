@@ -18,14 +18,18 @@ import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticat
 import { Route as CommunityIndexRouteImport } from './routes/community/index'
 import { Route as CommunityTheatreIdRouteImport } from './routes/community/$theatreId'
 import { Route as MoviesMovieIdRouteImport } from './routes/movies/$movieId'
+import { Route as TheatresIndexRouteImport } from './routes/theatres/index'
+import { Route as TheatresTheatreIdRouteImport } from './routes/theatres/$theatreId'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminFoodRouteImport } from './routes/_authenticated/admin/food'
 import { Route as AuthenticatedAdminMoviesRouteImport } from './routes/_authenticated/admin/movies'
 import { Route as AuthenticatedAdminPollsRouteImport } from './routes/_authenticated/admin/polls'
 import { Route as AuthenticatedAdminShowsRouteImport } from './routes/_authenticated/admin/shows'
+import { Route as AuthenticatedAdminTheatreAccessRouteImport } from './routes/_authenticated/admin/theatre-access'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin/theatres'
 import { Route as AuthenticatedBookShowIdRouteImport } from './routes/_authenticated/book/$showId'
 import { Route as AuthenticatedBookingBookingIdRouteImport } from './routes/_authenticated/booking/$bookingId'
+import { Route as AuthenticatedTheatreIndexRouteImport } from './routes/_authenticated/theatre/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -71,6 +75,16 @@ const MoviesMovieIdRoute = MoviesMovieIdRouteImport.update({
   path: '/movies/$movieId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TheatresIndexRoute = TheatresIndexRouteImport.update({
+  id: '/theatres/',
+  path: '/theatres/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TheatresTheatreIdRoute = TheatresTheatreIdRouteImport.update({
+  id: '/theatres/$theatreId',
+  path: '/theatres/$theatreId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -97,6 +111,12 @@ const AuthenticatedAdminShowsRoute = AuthenticatedAdminShowsRouteImport.update({
   path: '/shows',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
+const AuthenticatedAdminTheatreAccessRoute =
+  AuthenticatedAdminTheatreAccessRouteImport.update({
+    id: '/theatre-access',
+    path: '/theatre-access',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminTheatresRoute =
   AuthenticatedAdminTheatresRouteImport.update({
     id: '/theatres',
@@ -114,6 +134,12 @@ const AuthenticatedBookingBookingIdRoute =
     path: '/booking/$bookingId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTheatreIndexRoute =
+  AuthenticatedTheatreIndexRouteImport.update({
+    id: '/theatre/',
+    path: '/theatre/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -123,15 +149,19 @@ export interface FileRoutesByFullPath {
   '/bookings': typeof AuthenticatedBookingsRoute
   '/community/$theatreId': typeof CommunityTheatreIdRoute
   '/movies/$movieId': typeof MoviesMovieIdRoute
+  '/theatres/$theatreId': typeof TheatresTheatreIdRoute
   '/community/': typeof CommunityIndexRoute
+  '/theatres/': typeof TheatresIndexRoute
   '/admin/food': typeof AuthenticatedAdminFoodRoute
   '/admin/movies': typeof AuthenticatedAdminMoviesRoute
   '/admin/polls': typeof AuthenticatedAdminPollsRoute
   '/admin/shows': typeof AuthenticatedAdminShowsRoute
+  '/admin/theatre-access': typeof AuthenticatedAdminTheatreAccessRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/book/$showId': typeof AuthenticatedBookShowIdRoute
   '/booking/$bookingId': typeof AuthenticatedBookingBookingIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/theatre/': typeof AuthenticatedTheatreIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -140,15 +170,19 @@ export interface FileRoutesByTo {
   '/bookings': typeof AuthenticatedBookingsRoute
   '/community/$theatreId': typeof CommunityTheatreIdRoute
   '/movies/$movieId': typeof MoviesMovieIdRoute
+  '/theatres/$theatreId': typeof TheatresTheatreIdRoute
   '/community': typeof CommunityIndexRoute
+  '/theatres': typeof TheatresIndexRoute
   '/admin/food': typeof AuthenticatedAdminFoodRoute
   '/admin/movies': typeof AuthenticatedAdminMoviesRoute
   '/admin/polls': typeof AuthenticatedAdminPollsRoute
   '/admin/shows': typeof AuthenticatedAdminShowsRoute
+  '/admin/theatre-access': typeof AuthenticatedAdminTheatreAccessRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/book/$showId': typeof AuthenticatedBookShowIdRoute
   '/booking/$bookingId': typeof AuthenticatedBookingBookingIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/theatre': typeof AuthenticatedTheatreIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -160,15 +194,19 @@ export interface FileRoutesById {
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
   '/community/$theatreId': typeof CommunityTheatreIdRoute
   '/movies/$movieId': typeof MoviesMovieIdRoute
+  '/theatres/$theatreId': typeof TheatresTheatreIdRoute
   '/community/': typeof CommunityIndexRoute
+  '/theatres/': typeof TheatresIndexRoute
   '/_authenticated/admin/food': typeof AuthenticatedAdminFoodRoute
   '/_authenticated/admin/movies': typeof AuthenticatedAdminMoviesRoute
   '/_authenticated/admin/polls': typeof AuthenticatedAdminPollsRoute
   '/_authenticated/admin/shows': typeof AuthenticatedAdminShowsRoute
+  '/_authenticated/admin/theatre-access': typeof AuthenticatedAdminTheatreAccessRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/_authenticated/book/$showId': typeof AuthenticatedBookShowIdRoute
   '/_authenticated/booking/$bookingId': typeof AuthenticatedBookingBookingIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/theatre/': typeof AuthenticatedTheatreIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -180,15 +218,19 @@ export interface FileRouteTypes {
     | '/bookings'
     | '/community/$theatreId'
     | '/movies/$movieId'
+    | '/theatres/$theatreId'
     | '/community/'
+    | '/theatres/'
     | '/admin/food'
     | '/admin/movies'
     | '/admin/polls'
     | '/admin/shows'
+    | '/admin/theatre-access'
     | '/admin/theatres'
     | '/book/$showId'
     | '/booking/$bookingId'
     | '/admin/'
+    | '/theatre/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -197,15 +239,19 @@ export interface FileRouteTypes {
     | '/bookings'
     | '/community/$theatreId'
     | '/movies/$movieId'
+    | '/theatres/$theatreId'
     | '/community'
+    | '/theatres'
     | '/admin/food'
     | '/admin/movies'
     | '/admin/polls'
     | '/admin/shows'
+    | '/admin/theatre-access'
     | '/admin/theatres'
     | '/book/$showId'
     | '/booking/$bookingId'
     | '/admin'
+    | '/theatre'
   id:
     | '__root__'
     | '/'
@@ -216,15 +262,19 @@ export interface FileRouteTypes {
     | '/_authenticated/bookings'
     | '/community/$theatreId'
     | '/movies/$movieId'
+    | '/theatres/$theatreId'
     | '/community/'
+    | '/theatres/'
     | '/_authenticated/admin/food'
     | '/_authenticated/admin/movies'
     | '/_authenticated/admin/polls'
     | '/_authenticated/admin/shows'
+    | '/_authenticated/admin/theatre-access'
     | '/_authenticated/admin/theatres'
     | '/_authenticated/book/$showId'
     | '/_authenticated/booking/$bookingId'
     | '/_authenticated/admin/'
+    | '/_authenticated/theatre/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -234,7 +284,9 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   CommunityTheatreIdRoute: typeof CommunityTheatreIdRoute
   MoviesMovieIdRoute: typeof MoviesMovieIdRoute
+  TheatresTheatreIdRoute: typeof TheatresTheatreIdRoute
   CommunityIndexRoute: typeof CommunityIndexRoute
+  TheatresIndexRoute: typeof TheatresIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -302,6 +354,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoviesMovieIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/theatres/': {
+      id: '/theatres/'
+      path: '/theatres'
+      fullPath: '/theatres/'
+      preLoaderRoute: typeof TheatresIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/theatres/$theatreId': {
+      id: '/theatres/$theatreId'
+      path: '/theatres/$theatreId'
+      fullPath: '/theatres/$theatreId'
+      preLoaderRoute: typeof TheatresTheatreIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
       path: '/'
@@ -337,6 +403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminShowsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/theatre-access': {
+      id: '/_authenticated/admin/theatre-access'
+      path: '/theatre-access'
+      fullPath: '/admin/theatre-access'
+      preLoaderRoute: typeof AuthenticatedAdminTheatreAccessRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/theatres': {
       id: '/_authenticated/admin/theatres'
       path: '/theatres'
@@ -358,6 +431,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBookingBookingIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/theatre/': {
+      id: '/_authenticated/theatre/'
+      path: '/theatre'
+      fullPath: '/theatre/'
+      preLoaderRoute: typeof AuthenticatedTheatreIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -366,6 +446,7 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminMoviesRoute: typeof AuthenticatedAdminMoviesRoute
   AuthenticatedAdminPollsRoute: typeof AuthenticatedAdminPollsRoute
   AuthenticatedAdminShowsRoute: typeof AuthenticatedAdminShowsRoute
+  AuthenticatedAdminTheatreAccessRoute: typeof AuthenticatedAdminTheatreAccessRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
@@ -376,6 +457,7 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminMoviesRoute: AuthenticatedAdminMoviesRoute,
     AuthenticatedAdminPollsRoute: AuthenticatedAdminPollsRoute,
     AuthenticatedAdminShowsRoute: AuthenticatedAdminShowsRoute,
+    AuthenticatedAdminTheatreAccessRoute: AuthenticatedAdminTheatreAccessRoute,
     AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   }
@@ -390,6 +472,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
   AuthenticatedBookShowIdRoute: typeof AuthenticatedBookShowIdRoute
   AuthenticatedBookingBookingIdRoute: typeof AuthenticatedBookingBookingIdRoute
+  AuthenticatedTheatreIndexRoute: typeof AuthenticatedTheatreIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -397,6 +480,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
   AuthenticatedBookShowIdRoute: AuthenticatedBookShowIdRoute,
   AuthenticatedBookingBookingIdRoute: AuthenticatedBookingBookingIdRoute,
+  AuthenticatedTheatreIndexRoute: AuthenticatedTheatreIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -409,7 +493,9 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   CommunityTheatreIdRoute: CommunityTheatreIdRoute,
   MoviesMovieIdRoute: MoviesMovieIdRoute,
+  TheatresTheatreIdRoute: TheatresTheatreIdRoute,
   CommunityIndexRoute: CommunityIndexRoute,
+  TheatresIndexRoute: TheatresIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

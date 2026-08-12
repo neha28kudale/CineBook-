@@ -3,24 +3,105 @@ import { createPublicClient } from "@/lib/supabase-public.server";
 type ShowJoin = {
   name: string;
   total_seats: number;
-  theatres: { name: string; city: string; address: string } | null;
+  theatres: {
+    id: string;
+    name: string;
+    city: string;
+    address: string;
+    image_url?: string;
+    video_url?: string;
+  } | null;
 } | null;
 
 export function showStartISO(showDate: string, showTime: string): string {
   return `${showDate}T${showTime.length === 5 ? `${showTime}:00` : showTime}`;
 }
 
-export async function fetchMovies(status: "now_showing" | "upcoming", search?: string) {
+export async function fetchMovies(status: "now_showing" | "upcoming") {
   const supabase = createPublicClient();
-  let query = supabase
+  const { data, error } = await supabase
     .from("movies")
     .select("*")
     .eq("status", status)
     .order("release_date", { ascending: false });
-  if (search && search.trim()) {
-    query = query.ilike("title", `%${search.trim()}%`);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function searchMoviesAndTheatres(query: string) {
+  const supabase = createPublicClient();
+  const q = query.trim();
+  if (!q) return { movies: [], theatres: [] };
+
+  const pattern = `%${q.replace(/[%_,"]/g, "")}%`;
+
+  const moviesRes = await supabase
+    .from("movies")
+    .select("id, title, genre, language, poster_url, rating, status")
+    .ilike("title", pattern)
+    .order("release_date", { ascending: false })
+    .limit(8);
+
+  let movies = moviesRes.data ?? [];
+  if (movies.length < 8 && !moviesRes.error) {
+    const extraRes = await supabase
+      .from("movies")
+      .select("id, title, genre, language, poster_url, rating, status")
+      .or(
+        [
+          `genre.ilike.${pattern}`,
+          `language.ilike.${pattern}`,
+          `cast_members.ilike.${pattern}`,
+        ].join(","),
+      )
+      .order("release_date", { ascending: false })
+      .limit(8);
+    if (!extraRes.error && extraRes.data) {
+      const seen = new Set(movies.map((m) => m.id));
+      for (const m of extraRes.data) {
+        if (!seen.has(m.id)) {
+          movies.push(m);
+          seen.add(m.id);
+        }
+      }
+      movies = movies.slice(0, 8);
+    }
   }
-  const { data, error } = await query;
+
+  if (moviesRes.error) throw new Error(moviesRes.error.message);
+
+  let theatres: { id: string; name: string; city: string; address: string; image_url?: string }[] =
+    [];
+  const theatresRes = await supabase
+    .from("theatres")
+    .select("id, name, city, address")
+    .or(`name.ilike.${pattern},city.ilike.${pattern},address.ilike.${pattern}`)
+    .order("name")
+    .limit(5);
+  if (!theatresRes.error) {
+    theatres = theatresRes.data ?? [];
+  }
+
+  return { movies, theatres };
+}
+
+export async function fetchTheatre(id: string) {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("theatres")
+    .select("*, screens(id, name, total_seats)")
+    .eq("id", id)
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function fetchTheatres() {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("theatres")
+    .select("id, name, city, address, image_url, video_url")
+    .order("name");
   if (error) throw new Error(error.message);
   return data ?? [];
 }
@@ -38,7 +119,7 @@ export async function fetchShowtimes(movieId: string, date: string, city?: strin
   const { data: rows, error } = await supabase
     .from("shows")
     .select(
-      "id, show_date, show_time, base_price, gold_price, premium_price, screen_id, screens(name, total_seats, theatres(name, city, address))",
+      "id, show_date, show_time, base_price, gold_price, premium_price, screen_id, screens(name, total_seats, theatres(id, name, city, address, image_url, video_url))",
     )
     .eq("movie_id", movieId)
     .eq("show_date", date)
@@ -53,23 +134,26 @@ export async function fetchShowtimes(movieId: string, date: string, city?: strin
   if (!shows.length) return [];
 
   const showIds = shows.map((s) => s.id);
-  const { data: showSeats } = await supabase
+  const { data: showSeats, error: seatsError } = await supabase
     .from("show_seats")
     .select("show_id, status, locked_until")
     .in("show_id", showIds);
 
   const now = Date.now();
   const takenByShow = new Map<string, number>();
-  for (const row of showSeats ?? []) {
-    const locked =
-      row.status === "locked" && row.locked_until && new Date(row.locked_until).getTime() > now;
-    if (row.status === "booked" || locked) {
-      takenByShow.set(row.show_id, (takenByShow.get(row.show_id) ?? 0) + 1);
+  if (!seatsError) {
+    for (const row of showSeats ?? []) {
+      const locked =
+        row.status === "locked" && row.locked_until && new Date(row.locked_until).getTime() > now;
+      if (row.status === "booked" || locked) {
+        takenByShow.set(row.show_id, (takenByShow.get(row.show_id) ?? 0) + 1);
+      }
     }
   }
 
   return shows.map((show) => {
     const screen = show.screens as unknown as ShowJoin;
+    const theatre = screen?.theatres;
     const total = screen?.total_seats ?? 0;
     const taken = takenByShow.get(show.id) ?? 0;
     return {
@@ -80,13 +164,27 @@ export async function fetchShowtimes(movieId: string, date: string, city?: strin
       gold_price: show.gold_price,
       premium_price: show.premium_price,
       screen_name: screen?.name ?? "Screen",
-      theatre_name: screen?.theatres?.name ?? "Theatre",
-      city: screen?.theatres?.city ?? "",
-      theatre_address: screen?.theatres?.address ?? "",
+      theatre_id: theatre?.id ?? "",
+      theatre_name: theatre?.name ?? "Theatre",
+      city: theatre?.city ?? "",
+      theatre_address: theatre?.address ?? "",
+      theatre_image_url: theatre?.image_url ?? "",
+      theatre_video_url: theatre?.video_url ?? "",
       total_seats: total,
       available_seats: Math.max(0, total - taken),
     };
   });
+}
+
+export async function fetchShowtimesInRange(movieId: string, dates: string[], city?: string) {
+  const uniqueDates = [...new Set(dates.filter(Boolean))];
+  const results = await Promise.all(
+    uniqueDates.map(async (date) => {
+      const shows = await fetchShowtimes(movieId, date, city);
+      return { date, shows };
+    }),
+  );
+  return results;
 }
 
 export async function fetchSeatMap(showId: string) {
@@ -94,7 +192,7 @@ export async function fetchSeatMap(showId: string) {
   const { data: show, error: showError } = await supabase
     .from("shows")
     .select(
-      "id, show_date, show_time, base_price, gold_price, premium_price, screen_id, movie_id, movies(title, rating, duration_min, certificate, language), screens(name, total_seats, theatres(name, city, address))",
+      "id, show_date, show_time, base_price, gold_price, premium_price, screen_id, movie_id, movies(title, rating, duration_min, certificate, language), screens(name, total_seats, theatres(id, name, city, address, image_url, video_url))",
     )
     .eq("id", showId)
     .single();

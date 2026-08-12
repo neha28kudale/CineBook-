@@ -13,6 +13,8 @@ import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SiteHeader } from "@/components/site-header";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { SetupBanner } from "@/components/setup-banner";
 
 function NotFoundComponent() {
   return (
@@ -131,12 +133,13 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex min-h-screen flex-col">
+        <SetupBanner />
         <SiteHeader />
-        <div className="flex-1">
+        <div className="flex-1 pb-24 md:pb-0">
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
         </div>
-        <footer className="border-t border-border py-8">
+        <footer className="hidden border-t border-border py-8 md:block">
           <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 text-center">
             <span className="font-display text-2xl tracking-widest text-primary">CINEBOOK</span>
             <p className="text-xs text-muted-foreground">
@@ -144,6 +147,7 @@ function RootComponent() {
             </p>
           </div>
         </footer>
+        <MobileBottomNav />
       </div>
       <Toaster theme="dark" position="top-center" richColors />
     </QueryClientProvider>

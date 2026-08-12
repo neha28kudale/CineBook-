@@ -277,7 +277,7 @@ export const theatreDashboard = createServerFn({ method: "GET" })
     if (theatreId) {
       const { data } = await context.supabase
         .from("theatres")
-        .select("id, name, address, city, state")
+        .select("id, name, address, city, latitude, longitude, image_url, video_url")
         .eq("id", theatreId)
         .single();
       theatre = data;

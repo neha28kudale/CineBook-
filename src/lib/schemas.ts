@@ -51,6 +51,19 @@ export const theatreInput = z.object({
   name: z.string().trim().min(1).max(200),
   city: z.string().trim().min(1).max(100),
   address: z.string().trim().max(500).default(""),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  image_url: z.string().trim().max(1000).default(""),
+  video_url: z.string().trim().max(1000).default(""),
+});
+
+export const theatreMediaInput = z.object({
+  id: z.string().uuid(),
+  address: z.string().trim().max(500).optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  image_url: z.string().trim().max(1000).default(""),
+  video_url: z.string().trim().max(1000).default(""),
 });
 
 export const screenInput = z.object({

@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   Area,
   AreaChart,
@@ -15,6 +16,8 @@ import {
 } from "recharts";
 import { IndianRupee, Popcorn, Ticket, Users, MapPin } from "lucide-react";
 import { theatreDashboard } from "@/lib/admin.functions";
+import { updateTheatreMedia } from "@/lib/theatre-admin.functions";
+import { TheatreMediaEditor } from "@/components/theatre-media-editor";
 import { Skeleton } from "@/components/ui/skeleton";
 import { inr } from "@/lib/pricing";
 
@@ -30,8 +33,10 @@ export const Route = createFileRoute("/_authenticated/theatre/")({
 
 function TheatreDashboardPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const getDashboard = useServerFn(theatreDashboard);
   const [hasError, setHasError] = useState(false);
+  const [mediaBusy, setMediaBusy] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["theatre-dashboard"],
@@ -91,7 +96,6 @@ function TheatreDashboardPage() {
                 <span>
                   {theatre.address}
                   {theatre.city && `, ${theatre.city}`}
-                  {theatre.state && `, ${theatre.state}`}
                 </span>
               </div>
             )}
@@ -101,6 +105,47 @@ function TheatreDashboardPage() {
           </div>
         </div>
       </div>
+
+      {theatre && (
+        <section className="rounded-xl border border-border bg-card p-5">
+          <h2 className="mb-1 font-display text-xl tracking-wider text-card-foreground">
+            Map &amp; virtual tour
+          </h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Set your theatre location and YouTube tour video. Customers see these on the public
+            theatre page, movie showtimes, and booking flow.
+          </p>
+          <TheatreMediaEditor
+            key={theatre.id}
+            theatre={theatre}
+            busy={mediaBusy}
+            onSave={async (values) => {
+              setMediaBusy(true);
+              try {
+                await updateTheatreMedia({
+                  data: {
+                    id: theatre.id,
+                    address: values.address,
+                    latitude: values.latitude,
+                    longitude: values.longitude,
+                    image_url: values.image_url,
+                    video_url: values.video_url,
+                  },
+                });
+                toast.success("Map & virtual tour updated.");
+                queryClient.invalidateQueries({ queryKey: ["theatre-dashboard"] });
+                queryClient.invalidateQueries({ queryKey: ["theatres"] });
+                queryClient.invalidateQueries({ queryKey: ["theatre", theatre.id] });
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Failed to save.");
+                throw err;
+              } finally {
+                setMediaBusy(false);
+              }
+            }}
+          />
+        </section>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

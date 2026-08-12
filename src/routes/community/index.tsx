@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { MapPin, MessageSquare, Users, Vote } from "lucide-react";
+import { MapPin, MessageSquare, Users, Vote, MonitorPlay } from "lucide-react";
 import { listCommunities } from "@/lib/community.functions";
 import { Button } from "@/components/ui/button";
 
@@ -87,6 +87,11 @@ function CommunityIndex() {
             <Button asChild className="mt-4 w-full">
               <Link to="/community/$theatreId" params={{ theatreId: c.id }}>
                 Open community
+              </Link>
+            </Button>
+            <Button asChild className="mt-2 w-full" variant="outline">
+              <Link to="/theatres/$theatreId" params={{ theatreId: c.id }}>
+                <MonitorPlay className="mr-2 h-4 w-4" /> Virtual tour &amp; map
               </Link>
             </Button>
           </article>
