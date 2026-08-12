@@ -15,6 +15,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as CommunityIndexRouteImport } from './routes/community/index'
 import { Route as CommunityTheatreIdRouteImport } from './routes/community/$theatreId'
 import { Route as MoviesMovieIdRouteImport } from './routes/movies/$movieId'
@@ -59,6 +61,16 @@ const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
   id: '/bookings',
   path: '/bookings',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthConfirmRoute = AuthConfirmRouteImport.update({
+  id: '/confirm',
+  path: '/confirm',
+  getParentRoute: () => AuthRoute,
 } as any)
 const CommunityIndexRoute = CommunityIndexRouteImport.update({
   id: '/community/',
@@ -143,10 +155,12 @@ const AuthenticatedTheatreIndexRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/bookings': typeof AuthenticatedBookingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/community/$theatreId': typeof CommunityTheatreIdRoute
   '/movies/$movieId': typeof MoviesMovieIdRoute
   '/theatres/$theatreId': typeof TheatresTheatreIdRoute
@@ -165,9 +179,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/bookings': typeof AuthenticatedBookingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/community/$theatreId': typeof CommunityTheatreIdRoute
   '/movies/$movieId': typeof MoviesMovieIdRoute
   '/theatres/$theatreId': typeof TheatresTheatreIdRoute
@@ -188,10 +204,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/community/$theatreId': typeof CommunityTheatreIdRoute
   '/movies/$movieId': typeof MoviesMovieIdRoute
   '/theatres/$theatreId': typeof TheatresTheatreIdRoute
@@ -216,6 +234,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin'
     | '/bookings'
+    | '/auth/callback'
+    | '/auth/confirm'
     | '/community/$theatreId'
     | '/movies/$movieId'
     | '/theatres/$theatreId'
@@ -237,6 +257,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/bookings'
+    | '/auth/callback'
+    | '/auth/confirm'
     | '/community/$theatreId'
     | '/movies/$movieId'
     | '/theatres/$theatreId'
@@ -260,6 +282,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/admin'
     | '/_authenticated/bookings'
+    | '/auth/callback'
+    | '/auth/confirm'
     | '/community/$theatreId'
     | '/movies/$movieId'
     | '/theatres/$theatreId'
@@ -280,7 +304,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   CommunityTheatreIdRoute: typeof CommunityTheatreIdRoute
   MoviesMovieIdRoute: typeof MoviesMovieIdRoute
@@ -332,6 +356,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/bookings'
       preLoaderRoute: typeof AuthenticatedBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/confirm': {
+      id: '/auth/confirm'
+      path: '/confirm'
+      fullPath: '/auth/confirm'
+      preLoaderRoute: typeof AuthConfirmRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/community/': {
       id: '/community/'
@@ -486,10 +524,22 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthConfirmRoute: typeof AuthConfirmRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthConfirmRoute: AuthConfirmRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   CommunityTheatreIdRoute: CommunityTheatreIdRoute,
   MoviesMovieIdRoute: MoviesMovieIdRoute,

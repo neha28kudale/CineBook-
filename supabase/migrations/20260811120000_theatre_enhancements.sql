@@ -17,6 +17,7 @@ grant select on public.theatre_admin_assignments to authenticated;
 grant all on public.theatre_admin_assignments to service_role;
 alter table public.theatre_admin_assignments enable row level security;
 
+drop policy if exists "theatre_admin_assignments_select" on public.theatre_admin_assignments;
 create policy "theatre_admin_assignments_select" on public.theatre_admin_assignments
   for select to authenticated
   using (
@@ -25,6 +26,7 @@ create policy "theatre_admin_assignments_select" on public.theatre_admin_assignm
     or public.has_role(auth.uid(), 'theatre_admin')
   );
 
+drop policy if exists "theatre_admin_assignments_write" on public.theatre_admin_assignments;
 create policy "theatre_admin_assignments_write" on public.theatre_admin_assignments
   for all to authenticated
   using (public.has_role(auth.uid(), 'admin'))
