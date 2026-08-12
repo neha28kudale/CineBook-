@@ -63,11 +63,11 @@ function TheatreDashboardPage() {
 
   if (isLoading || !data) {
     return (
-      <div className="space-y-6">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 pb-24 md:pb-10">
         <Skeleton className="h-32 rounded-xl" />
         <Skeleton className="h-24 rounded-xl" />
         <Skeleton className="h-64 rounded-xl" />
-      </div>
+      </main>
     );
   }
 
@@ -82,7 +82,7 @@ function TheatreDashboardPage() {
   ];
 
   return (
-    <div className="space-y-8">
+    <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 pb-24 md:pb-10">
       {/* Theatre Info Header */}
       <div>
         <div className="mb-4 flex items-start justify-between">
@@ -268,6 +268,6 @@ function TheatreDashboardPage() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
