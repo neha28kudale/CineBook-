@@ -1,4 +1,4 @@
-# Ticket & Treat
+# CineBook
 
 Build a full-stack Online Movie Ticket Booking System where users can browse movies, pick a theatre/showtime, select seats on a visual seat map, pre-order food & beverages, pay online, and get a digital ticket. Theatre/system admins manage movies, shows, seat layouts, food menu, and view reports.
 
