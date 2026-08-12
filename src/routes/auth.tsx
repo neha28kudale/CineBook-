@@ -34,14 +34,21 @@ function AuthPage() {
   async function afterSignIn() {
     const { data: userData } = await supabase.auth.getUser();
     if (userData.user) {
-      const { data: roles } = await supabase
+      const { data: adminRole } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userData.user.id)
-        .in("role", ["admin", "theatre_admin"]);
-      const isAdmin = (roles?.length ?? 0) > 0;
+        .eq("role", "admin");
+      const { data: theatreRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userData.user.id)
+        .eq("role", "theatre_admin");
+      
       if (redirect) navigate({ to: redirect });
-      else navigate({ to: isAdmin ? "/admin" : "/" });
+      else if (adminRole && adminRole.length > 0) navigate({ to: "/admin" });
+      else if (theatreRole && theatreRole.length > 0) navigate({ to: "/theatre" });
+      else navigate({ to: "/" });
     }
   }
 

@@ -40,7 +40,20 @@ export function SiteHeader() {
         .from("user_roles")
         .select("role")
         .eq("user_id", user!.id)
-        .in("role", ["admin", "theatre_admin"]);
+        .eq("role", "admin");
+      return (data?.length ?? 0) > 0;
+    },
+  });
+
+  const { data: isTheatreAdmin } = useQuery({
+    queryKey: ["is-theatre-admin", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user!.id)
+        .eq("role", "theatre_admin");
       return (data?.length ?? 0) > 0;
     },
   });
@@ -79,6 +92,7 @@ export function SiteHeader() {
           {navLink("/community", "Communities")}
           {user && navLink("/bookings", "My Bookings")}
           {user && isAdmin && navLink("/admin", "Admin")}
+          {user && isTheatreAdmin && navLink("/theatre", "Theatre Dashboard")}
         </nav>
 
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
@@ -111,6 +125,13 @@ export function SiteHeader() {
                   <SheetClose asChild>
                     <Link to="/admin" className="text-sm font-medium text-foreground">
                       Admin
+                    </Link>
+                  </SheetClose>
+                )}
+                {user && isTheatreAdmin && (
+                  <SheetClose asChild>
+                    <Link to="/theatre" className="text-sm font-medium text-foreground">
+                      Theatre Dashboard
                     </Link>
                   </SheetClose>
                 )}
@@ -153,6 +174,11 @@ export function SiteHeader() {
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate({ to: "/admin" })}>
                     <LayoutDashboard className="mr-2 h-4 w-4" /> Admin Dashboard
+                  </DropdownMenuItem>
+                )}
+                {isTheatreAdmin && (
+                  <DropdownMenuItem onClick={() => navigate({ to: "/theatre" })}>
+                    <LayoutDashboard className="mr-2 h-4 w-4" /> Theatre Dashboard
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />

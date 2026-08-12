@@ -11,27 +11,62 @@ export async function requireAdmin(client: Client, userId: string) {
   if (!isAdmin && !isTheatreAdmin) throw new Error("Forbidden: admin access required");
 }
 
-export async function fetchReports(client: Client) {
+export type AccessScope = 
+  | { role: "admin" }
+  | { role: "theatre_admin"; theatreId: string };
+
+export async function requireAccessScope(client: Client, userId: string): Promise<AccessScope> {
+  const [{ data: isAdmin }, { data: theatreId }] = await Promise.all([
+    client.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    client.rpc("get_managed_theatre_id", { _user_id: userId }),
+  ]);
+  
+  if (isAdmin) {
+    return { role: "admin" };
+  }
+  
+  if (theatreId) {
+    return { role: "theatre_admin", theatreId };
+  }
+  
+  throw new Error("Forbidden: no access scope (neither admin nor theatre_admin with theatre assignment)");
+}
+
+export async function fetchReports(client: Client, theatreId?: string) {
+  // Fetch with theatre relationship included for filtering
   const [bookingsRes, showSeatsRes, foodRes] = await Promise.all([
     client
       .from("bookings")
-      .select("id, status, total_amount, created_at, shows(show_date, show_time, movies(title))"),
+      .select("id, status, total_amount, created_at, shows(show_date, show_time, movies(title), screens(theatre_id))"),
     client
       .from("show_seats")
-      .select("show_id, status, shows(show_date, show_time, movies(title), screens(name, total_seats))")
+      .select("show_id, status, shows(show_date, show_time, movies(title), screens(name, total_seats, theatre_id))")
       .eq("status", "booked"),
     client
       .from("food_orders")
-      .select("quantity, price_at_order, food_items(name), bookings(status)"),
+      .select("quantity, price_at_order, food_items(name), bookings(status, shows(screens(theatre_id)))"),
   ]);
   if (bookingsRes.error) throw new Error(bookingsRes.error.message);
   if (showSeatsRes.error) throw new Error(showSeatsRes.error.message);
   if (foodRes.error) throw new Error(foodRes.error.message);
 
-  const confirmed = (bookingsRes.data ?? []).filter((b) => b.status === "confirmed");
+  // Filter by theatre if scoped
+  const filterByTheatre = (obj: any): boolean => {
+    if (!theatreId) return true;
+    const theatreIdFromObj = obj.shows?.screens?.theatre_id || obj.shows?.[0]?.screens?.theatre_id;
+    return theatreIdFromObj === theatreId;
+  };
+
+  const filtered = {
+    bookings: (bookingsRes.data ?? []).filter(filterByTheatre),
+    showSeats: (showSeatsRes.data ?? []).filter(filterByTheatre),
+    food: (foodRes.data ?? []).filter(filterByTheatre),
+  };
+
+  const confirmed = filtered.bookings.filter((b) => b.status === "confirmed");
   const totalRevenue = confirmed.reduce((s, b) => s + b.total_amount, 0);
   const totalBookings = confirmed.length;
-  const totalTickets = (showSeatsRes.data ?? []).length;
+  const totalTickets = filtered.showSeats.length;
 
   // Revenue by day
   const revenueByDay = new Map<string, number>();
@@ -63,7 +98,7 @@ export async function fetchReports(client: Client) {
     string,
     { label: string; booked: number; total: number }
   >();
-  for (const row of showSeatsRes.data ?? []) {
+  for (const row of filtered.showSeats) {
     const show = row.shows as unknown as {
       show_date: string;
       show_time: string;
@@ -87,7 +122,7 @@ export async function fetchReports(client: Client) {
   // Food revenue by item (confirmed bookings only)
   const byItem = new Map<string, { qty: number; revenue: number }>();
   let foodRevenue = 0;
-  for (const row of foodRes.data ?? []) {
+  for (const row of filtered.food) {
     const booking = row.bookings as unknown as { status: string } | null;
     if (booking?.status !== "confirmed") continue;
     const item = row.food_items as unknown as { name: string } | null;

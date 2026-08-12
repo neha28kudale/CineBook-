@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-rout
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Clapperboard, Film, LayoutDashboard, Loader2, MonitorPlay, Popcorn, Vote } from "lucide-react";
+import { Clapperboard, Film, LayoutDashboard, Loader2, MonitorPlay, Popcorn, Vote, Users } from "lucide-react";
 import { isCurrentUserAdmin } from "@/lib/admin.functions";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ const NAV: NavItem[] = [
   { to: "/admin/shows", label: "Shows", icon: MonitorPlay },
   { to: "/admin/food", label: "Food Menu", icon: Popcorn },
   { to: "/admin/polls", label: "Movie Polls", icon: Vote },
+  { to: "/admin/theatre-access", label: "Theatre Access", icon: Users },
 ];
 
 function AdminLayout() {
